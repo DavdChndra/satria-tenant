@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — SATRIA 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="wrap admin-header-inner">
+    <div class="brand">
+      <div class="brand-mark"><span>S</span></div>
+      SATRIA 2026 <span class="admin-tag">Admin</span>
+    </div>
+    <div class="admin-header-actions">
+      <a href="{{ url_for('index') }}" class="admin-header-link" target="_blank" rel="noopener">Lihat halaman depan &nearr;</a>
+      <a href="{{ url_for('admin_logout') }}" class="btn-outline btn-sm">Keluar</a>
+    </div>
+  </div>
+</header>
+
+<nav class="admin-nav">
+  <div class="wrap admin-nav-inner">
+    <a href="#panel-ringkasan" class="admin-nav-link">Ringkasan</a>
+    <a href="#panel-hero" class="admin-nav-link">Sambutan</a>
+    <a href="#panel-lokasi" class="admin-nav-link">Lokasi</a>
+    <a href="#panel-foto" class="admin-nav-link">Foto</a>
+    <a href="#panel-pembicara" class="admin-nav-link">Pembicara</a>
+    <a href="#panel-booth" class="admin-nav-link">Booth</a>
+    <a href="#panel-email" class="admin-nav-link">Kirim email</a>
+    <a href="#panel-pendaftaran" class="admin-nav-link">Pendaftaran</a>
+    <a href="{{ url_for('admin_scan') }}" class="admin-nav-link">Pindai QR</a>
+  </div>
+</nav>
+
+<main class="wrap admin-main">
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+  <div class="flash-list">{% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}</div>
+  {% endif %}
+{% endwith %}
+
+<section class="admin-stats" id="panel-ringkasan">
+  <div class="stat-card">
+    <span class="stat-label">Total pendaftaran</span>
+    <span class="stat-value">{{ total_registrations }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Menunggu pembayaran</span>
+    <span class="stat-value">{{ total_pending }}</span>
+  </div>
+  <div class="stat-card highlight">
+    <span class="stat-label">Total uang masuk (lunas)</span>
+    <span class="stat-value">Rp {{ "{:,}".format(total_paid).replace(",", ".") }}</span>
+  </div>
+</section>
+
+<section class="admin-panel" id="panel-hero">
+  <div class="admin-panel-head">
+    <h2>Sambutan halaman depan</h2>
+    <p>Bagian paling atas halaman pendaftaran &mdash; label, judul besar, dan kalimat pembuka.</p>
+  </div>
+
+  <form class="hero-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+    <div class="field">
+      <label>Label kecil</label>
+      <input type="text" name="hero_eyebrow" value="{{ event_info.hero_eyebrow or '' }}"
+             placeholder="mis. SATRIA 2026 &middot; Exhibition">
+    </div>
+
+    <div class="field">
+      <label>Judul besar</label>
+      <div class="hero-title-row">
+        <input type="text" name="hero_title_before" value="{{ event_info.hero_title_before or '' }}"
+               placeholder="Awal">
+        <input type="text" name="hero_title_accent" value="{{ event_info.hero_title_accent or '' }}"
+               placeholder="Bagian merah" class="input-accent">
+        <input type="text" name="hero_title_after" value="{{ event_info.hero_title_after or '' }}"
+               placeholder="Akhir">
+      </div>
+      <span class="field-hint">
+        Judul disusun dari tiga bagian. Bagian tengah tampil berwarna merah.
+        Kosongkan bagian yang tidak dipakai.
+      </span>
+    </div>
+
+    <div class="field">
+      <label>Kalimat pembuka</label>
+      <textarea name="hero_lead" rows="3"
+                placeholder="Kalimat penjelas di bawah judul.">{{ event_info.hero_lead or '' }}</textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Teks pengantar penyelenggara</label>
+        <input type="text" name="hero_note_prefix" value="{{ event_info.hero_note_prefix or '' }}"
+               placeholder="mis. In collaboration with">
+      </div>
+      <div class="field">
+        <label>Nama penyelenggara / mitra</label>
+        <input type="text" name="hero_note" value="{{ event_info.hero_note or '' }}"
+               placeholder="mis. PT Nusa Inspira Teknologi">
+      </div>
+    </div>
+
+    {# Nilai kelompok lain ikut dikirim agar tidak terhapus #}
+    <input type="hidden" name="venue_name" value="{{ event_info.venue_name or '' }}">
+    <input type="hidden" name="address" value="{{ event_info.address or '' }}">
+    <input type="hidden" name="event_date" value="{{ event_info.event_date or '' }}">
+    <input type="hidden" name="maps_url" value="{{ event_info.maps_url or '' }}">
+    <input type="hidden" name="speakers_eyebrow" value="{{ event_info.speakers_eyebrow or '' }}">
+    <input type="hidden" name="speakers_title" value="{{ event_info.speakers_title or '' }}">
+    <input type="hidden" name="speakers_subtitle" value="{{ event_info.speakers_subtitle or '' }}">
+
+    <button type="submit" class="btn-primary btn-sm">Simpan sambutan</button>
+  </form>
+</section>
+
+<section class="admin-panel" id="panel-lokasi">
+  <div class="admin-panel-head">
+    <h2>Lokasi acara</h2>
+    <p>Tampil di halaman depan. Kosongkan semua kolom bila belum ingin ditampilkan.</p>
+  </div>
+
+  <form class="event-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+    <div class="field-row">
+      <div class="field">
+        <label>Nama tempat</label>
+        <input type="text" name="venue_name" value="{{ event_info.venue_name }}" placeholder="mis. Gedung Serbaguna Telkom University">
+      </div>
+      <div class="field">
+        <label>Tanggal acara</label>
+        <input type="text" name="event_date" value="{{ event_info.event_date }}" placeholder="mis. 15 - 17 Mei 2026">
+      </div>
+    </div>
+    <div class="field">
+      <label>Alamat lengkap</label>
+      <textarea name="address" rows="2" placeholder="Jalan, kota, kode pos">{{ event_info.address }}</textarea>
+    </div>
+    <div class="field">
+      <label>Tautan Google Maps</label>
+      <input type="text" name="maps_url" value="{{ event_info.maps_url }}" placeholder="https://maps.google.com/?q=...">
+      <span class="field-hint">Buka Google Maps, cari lokasinya, klik <em>Bagikan</em>, lalu salin tautannya ke sini.</span>
+    </div>
+    {# Nilai judul pembicara ikut dikirim agar tidak terhapus #}
+    <input type="hidden" name="speakers_eyebrow" value="{{ event_info.speakers_eyebrow or '' }}">
+    <input type="hidden" name="speakers_title" value="{{ event_info.speakers_title or '' }}">
+    <input type="hidden" name="speakers_subtitle" value="{{ event_info.speakers_subtitle or '' }}">
+
+    <input type="hidden" name="hero_eyebrow" value="{{ event_info.hero_eyebrow or '' }}">
+    <input type="hidden" name="hero_title_before" value="{{ event_info.hero_title_before or '' }}">
+    <input type="hidden" name="hero_title_accent" value="{{ event_info.hero_title_accent or '' }}">
+    <input type="hidden" name="hero_title_after" value="{{ event_info.hero_title_after or '' }}">
+    <input type="hidden" name="hero_lead" value="{{ event_info.hero_lead or '' }}">
+    <input type="hidden" name="hero_note" value="{{ event_info.hero_note or '' }}">
+    <input type="hidden" name="hero_note_prefix" value="{{ event_info.hero_note_prefix or '' }}">
+    <button type="submit" class="btn-primary btn-sm">Simpan lokasi</button>
+  </form>
+</section>
+
+<section class="admin-panel" id="panel-foto">
+  <div class="admin-panel-head">
+    <h2>Foto carousel</h2>
+    <p>Foto yang tampil bergantian di halaman depan. Urutan kecil tampil lebih dulu.</p>
+  </div>
+
+  <form class="photo-upload-form" method="POST" enctype="multipart/form-data"
+        action="{{ url_for('admin_upload_photo') }}">
+    <div class="field">
+      <label>Pilih foto</label>
+      <input type="file" name="photos" accept="image/*" multiple required>
+      <span class="field-hint">JPG, PNG, WEBP, atau GIF. Maksimal 5 MB per foto. Rasio ideal 16:7. Bisa pilih lebih dari satu sekaligus.</span>
+    </div>
+    <div class="field">
+      <label>Keterangan (opsional)</label>
+      <input type="text" name="caption" placeholder="mis. Suasana pameran tahun lalu">
+      <span class="field-hint">Hanya dipakai bila Anda mengunggah satu foto.</span>
+    </div>
+    <button type="submit" class="btn-primary btn-sm">Unggah foto</button>
+  </form>
+
+  {% if photos %}
+  <div class="photo-grid">
+    {% for p in photos %}
+    <div class="photo-card {% if not p.is_active %}inactive{% endif %}">
+      <div class="photo-thumb">
+        <img src="{{ url_for('static', filename='uploads/' ~ p.filename) }}" alt="{{ p.caption }}"
+             class="adjust-preview"
+             style="object-fit:{{ p.fit_mode or 'contain' }};object-position:{{ p.object_position }};">
+        {% if not p.is_active %}<span class="photo-hidden-badge">Disembunyikan</span>{% endif %}
+      </div>
+      <form method="POST" action="{{ url_for('admin_update_photo', photo_id=p.id) }}" class="photo-form">
+        <div class="field">
+          <label>Keterangan</label>
+          <input type="text" name="caption" value="{{ p.caption }}" placeholder="Tanpa keterangan">
+        </div>
+
+        <div class="field adjust-box">
+          <label>Tampilan gambar</label>
+          <div class="fit-choice">
+            <label class="fit-opt">
+              <input type="radio" name="fit_mode" value="contain"
+                     {% if (p.fit_mode or 'contain') == 'contain' %}checked{% endif %}>
+              <span>Utuh</span>
+            </label>
+            <label class="fit-opt">
+              <input type="radio" name="fit_mode" value="cover"
+                     {% if p.fit_mode == 'cover' %}checked{% endif %}>
+              <span>Penuhi bingkai</span>
+            </label>
+          </div>
+
+          <div class="pos-controls" {% if (p.fit_mode or 'contain') != 'cover' %}hidden{% endif %}>
+            <div class="pos-row">
+              <span class="pos-label">Kiri &ndash; kanan</span>
+              <input type="range" name="pos_x" min="0" max="100" step="1"
+                     value="{{ p.pos_x if p.pos_x is not none else 50 }}" class="pos-slider">
+              <output class="pos-value">{{ p.pos_x if p.pos_x is not none else 50 }}%</output>
+            </div>
+            <div class="pos-row">
+              <span class="pos-label">Atas &ndash; bawah</span>
+              <input type="range" name="pos_y" min="0" max="100" step="1"
+                     value="{{ p.pos_y if p.pos_y is not none else 50 }}" class="pos-slider">
+              <output class="pos-value">{{ p.pos_y if p.pos_y is not none else 50 }}%</output>
+            </div>
+            <span class="field-hint">Geser untuk memilih bagian gambar yang tampil.</span>
+            <span class="field-hint pos-note" hidden></span>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Urutan</label>
+            <input type="number" name="sort_order" value="{{ p.sort_order }}" min="0">
+          </div>
+          <div class="field photo-active-field">
+            <label class="checkbox-label">
+              <input type="checkbox" name="is_active" {% if p.is_active %}checked{% endif %}>
+              Tampilkan
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn-outline btn-sm">Simpan</button>
+      </form>
+      <form method="POST" action="{{ url_for('admin_delete_photo', photo_id=p.id) }}"
+            onsubmit="return confirm('Hapus foto ini secara permanen?');">
+        <button type="submit" class="btn-danger btn-sm">Hapus</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-note">Belum ada foto. Unggah foto pertama agar carousel muncul di halaman depan.</p>
+  {% endif %}
+</section>
+
+<section class="admin-panel" id="panel-pembicara">
+  <div class="admin-panel-head">
+    <h2>Pembicara acara</h2>
+    <p>Tampil di halaman depan, di bawah galeri foto. Urutan kecil tampil lebih dulu.</p>
+  </div>
+
+  <form class="speaker-head-form" method="POST" action="{{ url_for('admin_update_event') }}">
+    <h3>Judul bagian</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>Label kecil</label>
+        <input type="text" name="speakers_eyebrow" value="{{ event_info.speakers_eyebrow or '' }}"
+               placeholder="mis. Narasumber">
+      </div>
+      <div class="field">
+        <label>Judul</label>
+        <input type="text" name="speakers_title" value="{{ event_info.speakers_title or '' }}"
+               placeholder="mis. Pembicara acara">
+      </div>
+    </div>
+    <div class="field">
+      <label>Kalimat pendukung</label>
+      <input type="text" name="speakers_subtitle" value="{{ event_info.speakers_subtitle or '' }}"
+             placeholder="mis. Menghadirkan praktisi dan akademisi di bidangnya.">
+      <span class="field-hint">Kosongkan salah satu bila tidak ingin ditampilkan.</span>
+    </div>
+
+    {# Nilai lokasi ikut dikirim agar tidak terhapus, karena memakai route yang sama #}
+    <input type="hidden" name="venue_name" value="{{ event_info.venue_name or '' }}">
+    <input type="hidden" name="address" value="{{ event_info.address or '' }}">
+    <input type="hidden" name="event_date" value="{{ event_info.event_date or '' }}">
+    <input type="hidden" name="maps_url" value="{{ event_info.maps_url or '' }}">
+
+    <input type="hidden" name="hero_eyebrow" value="{{ event_info.hero_eyebrow or '' }}">
+    <input type="hidden" name="hero_title_before" value="{{ event_info.hero_title_before or '' }}">
+    <input type="hidden" name="hero_title_accent" value="{{ event_info.hero_title_accent or '' }}">
+    <input type="hidden" name="hero_title_after" value="{{ event_info.hero_title_after or '' }}">
+    <input type="hidden" name="hero_lead" value="{{ event_info.hero_lead or '' }}">
+    <input type="hidden" name="hero_note" value="{{ event_info.hero_note or '' }}">
+    <input type="hidden" name="hero_note_prefix" value="{{ event_info.hero_note_prefix or '' }}">
+    <button type="submit" class="btn-outline btn-sm">Simpan judul</button>
+  </form>
+
+  <form class="speaker-new-form" method="POST" enctype="multipart/form-data"
+        action="{{ url_for('admin_new_speaker') }}">
+    <h3>Tambah pembicara</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>Nama</label>
+        <input type="text" name="name" placeholder="mis. Dr. Andi Wijaya" required>
+      </div>
+      <div class="field">
+        <label>Instansi</label>
+        <input type="text" name="institution" placeholder="mis. Institut Teknologi Bandung">
+      </div>
+    </div>
+    <div class="field">
+      <label>Topik pembahasan</label>
+      <input type="text" name="topic" placeholder="mis. Penerapan AI pada pendidikan tinggi">
+    </div>
+    <div class="field">
+      <label>Foto (opsional)</label>
+      <input type="file" name="photo" accept="image/*">
+      <span class="field-hint">Foto persegi paling rapi. Bila kosong, ditampilkan inisial nama.</span>
+    </div>
+    <button type="submit" class="btn-primary btn-sm">Tambah pembicara</button>
+  </form>
+
+  {% if speakers %}
+  <div class="speaker-admin-grid">
+    {% for sp in speakers %}
+    <div class="speaker-admin-card {% if not sp.is_active %}inactive{% endif %}">
+      <form method="POST" enctype="multipart/form-data"
+            action="{{ url_for('admin_update_speaker', speaker_id=sp.id) }}">
+        <div class="speaker-admin-head">
+          <div class="speaker-admin-photo">
+            {% if sp.photo %}
+            <img src="{{ url_for('static', filename='uploads/' ~ sp.photo) }}" alt="{{ sp.name }}"
+                 class="sp-preview" style="object-position:{{ sp.object_position }};">
+            {% else %}
+            <span>{{ sp.initials }}</span>
+            {% endif %}
+          </div>
+          <div class="field">
+            <label>Ganti foto</label>
+            <input type="file" name="photo" accept="image/*">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Nama</label>
+          <input type="text" name="name" value="{{ sp.name }}" required>
+        </div>
+        <div class="field">
+          <label>Instansi</label>
+          <input type="text" name="institution" value="{{ sp.institution }}">
+        </div>
+        <div class="field">
+          <label>Topik</label>
+          <input type="text" name="topic" value="{{ sp.topic }}">
+        </div>
+
+        {% if sp.photo %}
+        <div class="field adjust-box sp-adjust">
+          <label>Posisi foto</label>
+          <div class="pos-row">
+            <span class="pos-label">Kiri &ndash; kanan</span>
+            <input type="range" name="pos_x" min="0" max="100" step="1"
+                   value="{{ sp.pos_x if sp.pos_x is not none else 50 }}" class="pos-slider">
+            <output class="pos-value">{{ sp.pos_x if sp.pos_x is not none else 50 }}%</output>
+          </div>
+          <div class="pos-row">
+            <span class="pos-label">Atas &ndash; bawah</span>
+            <input type="range" name="pos_y" min="0" max="100" step="1"
+                   value="{{ sp.pos_y if sp.pos_y is not none else 50 }}" class="pos-slider">
+            <output class="pos-value">{{ sp.pos_y if sp.pos_y is not none else 50 }}%</output>
+          </div>
+          <span class="field-hint">Geser untuk menempatkan wajah di tengah bingkai.</span>
+          <span class="field-hint pos-note" hidden></span>
+        </div>
+        {% endif %}
+        <div class="field-row">
+          <div class="field">
+            <label>Urutan</label>
+            <input type="number" name="sort_order" value="{{ sp.sort_order }}" min="0">
+          </div>
+          <div class="field photo-active-field">
+            <label class="checkbox-label">
+              <input type="checkbox" name="is_active" {% if sp.is_active %}checked{% endif %}>
+              Tampilkan
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn-outline btn-sm">Simpan</button>
+      </form>
+      <form method="POST" action="{{ url_for('admin_delete_speaker', speaker_id=sp.id) }}"
+            onsubmit="return confirm('Hapus pembicara ini?');">
+        <button type="submit" class="btn-danger btn-sm">Hapus</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-note">Belum ada pembicara. Tambahkan agar bagian ini muncul di halaman depan.</p>
+  {% endif %}
+</section>
+
+<section class="admin-panel" id="panel-booth">
+  <div class="admin-panel-head">
+    <h2>Pengaturan jenis booth</h2>
+    <p>Ubah harga, kuota, atau nonaktifkan jenis booth. Perubahan langsung berlaku di halaman pendaftaran.</p>
+  </div>
+
+  <div class="booth-settings-grid">
+    {% for booth in booth_types %}
+    <form class="booth-settings-card" method="POST" action="{{ url_for('admin_update_booth', booth_id=booth.id) }}">
+      <div class="field">
+        <label>Nama booth</label>
+        <input type="text" name="name" value="{{ booth.name }}" required>
+      </div>
+      <div class="field">
+        <label>Deskripsi</label>
+        <textarea name="description" rows="2">{{ booth.description }}</textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Harga (Rp)</label>
+          <input type="number" name="price" value="{{ booth.price }}" min="0" step="1000" required>
+        </div>
+        <div class="field">
+          <label>Kuota</label>
+          <input type="number" name="quota" value="{{ booth.quota }}" min="0" required>
+        </div>
+      </div>
+      <div class="field-inline">
+        <label class="checkbox-label">
+          <input type="checkbox" name="is_active" {% if booth.is_active %}checked{% endif %}>
+          Aktifkan booth ini
+        </label>
+        <span class="booth-slots-admin">{{ booth.slots_taken }}/{{ booth.quota }} terisi</span>
+      </div>
+      <button type="submit" class="btn-outline btn-sm">Simpan perubahan</button>
+    </form>
+    {% endfor %}
+
+    <form class="booth-settings-card booth-new" method="POST" action="{{ url_for('admin_new_booth') }}">
+      <h3>Tambah jenis booth baru</h3>
+      <div class="field">
+        <label>Nama booth</label>
+        <input type="text" name="name" placeholder="mis. Booth komunitas" required>
+      </div>
+      <div class="field">
+        <label>Deskripsi</label>
+        <textarea name="description" rows="2" placeholder="Deskripsi singkat fasilitas"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Harga (Rp)</label>
+          <input type="number" name="price" min="0" step="1000" required>
+        </div>
+        <div class="field">
+          <label>Kuota</label>
+          <input type="number" name="quota" min="0" required>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary btn-sm">Tambah booth</button>
+    </form>
+  </div>
+</section>
+
+<section class="admin-panel" id="panel-email">
+  <div class="admin-panel-head">
+    <h2>Kirim informasi ke pendaftar</h2>
+    <p>Kirim pengumuman atau info teknis lewat email ke pendaftar yang sudah terkumpul.</p>
+  </div>
+
+  {% if not email_ready %}
+  <p class="empty-note">
+    Pengiriman email belum aktif. Isi <strong>SMTP_USER</strong> dan <strong>SMTP_PASS</strong>
+    pada berkas <strong>.env</strong>, lalu jalankan ulang aplikasi.
+  </p>
+  {% endif %}
+
+  <form class="broadcast-form" method="POST" action="{{ url_for('admin_send_broadcast') }}"
+        onsubmit="return confirm('Kirim email ini ke seluruh penerima yang dipilih?');">
+
+    <div class="field">
+      <label>Kirim kepada</label>
+      <div class="audience-options">
+        <label class="audience-option">
+          <input type="radio" name="audience" value="paid" checked>
+          <span class="audience-body">
+            <span class="audience-name">Sudah lunas</span>
+            <span class="audience-count">{{ count_paid }} penerima</span>
+          </span>
+        </label>
+        <label class="audience-option">
+          <input type="radio" name="audience" value="pending">
+          <span class="audience-body">
+            <span class="audience-name">Menunggu pembayaran</span>
+            <span class="audience-count">{{ count_pending }} penerima</span>
+          </span>
+        </label>
+        <label class="audience-option">
+          <input type="radio" name="audience" value="all">
+          <span class="audience-body">
+            <span class="audience-name">Semua pendaftar</span>
+            <span class="audience-count">{{ count_all }} penerima</span>
+          </span>
+        </label>
+        <label class="audience-option">
+          <input type="radio" name="audience" value="custom" id="audience-custom">
+          <span class="audience-body">
+            <span class="audience-name">Pilih manual</span>
+            <span class="audience-count"><span id="picked-count">0</span> dipilih</span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field recipient-picker" id="recipient-picker" hidden>
+      <label>Pilih penerima</label>
+      <div class="picker-toolbar">
+        <input type="text" id="picker-search" class="picker-search"
+               placeholder="Cari institusi, nama PIC, atau email...">
+        <button type="button" class="btn-outline btn-sm" id="picker-all">Pilih semua</button>
+        <button type="button" class="btn-outline btn-sm" id="picker-none">Kosongkan</button>
+      </div>
+      <div class="picker-list">
+        {% for t in tenants %}
+        <label class="picker-item"
+               data-search="{{ (t.institution_name ~ ' ' ~ t.pic_name ~ ' ' ~ t.email)|lower }}">
+          <input type="checkbox" name="tenant_ids" value="{{ t.id }}">
+          <span class="picker-body">
+            <span class="picker-line">
+              <span class="picker-name">{{ t.institution_name }}</span>
+              <span class="status-dot status-{{ t.payment_status }}">{{ t.payment_status }}</span>
+            </span>
+            <span class="picker-sub">{{ t.pic_name }} &middot; {{ t.email }}</span>
+          </span>
+        </label>
+        {% else %}
+        <p class="picker-empty">Belum ada pendaftar.</p>
+        {% endfor %}
+      </div>
+      <span class="field-hint" id="picker-hint">Tidak ada penerima yang cocok dengan pencarian.</span>
+    </div>
+
+    <div class="field">
+      <label>Judul email</label>
+      <input type="text" name="subject" placeholder="mis. Informasi teknis pelaksanaan pameran" required>
+    </div>
+
+    <div class="field">
+      <label>Isi pesan</label>
+      <textarea name="message" rows="7" required
+                placeholder="Tulis informasi yang ingin disampaikan.&#10;&#10;Pisahkan dengan baris kosong untuk membuat paragraf baru."></textarea>
+      <span class="field-hint">
+        Nama PIC, institusi, nomor pendaftaran, dan tautan status otomatis disertakan di setiap email.
+      </span>
+    </div>
+
+    <button type="submit" class="btn-primary btn-sm" {% if not email_ready %}disabled{% endif %}>
+      Kirim email
+    </button>
+  </form>
+
+  {% if broadcasts %}
+  <div class="broadcast-history">
+    <h3>Riwayat pengiriman</h3>
+    {% for b in broadcasts %}
+    <div class="broadcast-item">
+      <div class="broadcast-item-head">
+        <span class="broadcast-subject">{{ b.subject }}</span>
+        <span class="broadcast-date">{{ b.created_at.strftime("%d %b %Y %H:%M") }}</span>
+      </div>
+      <div class="broadcast-meta">
+        <span class="broadcast-tag">{{ b.audience_label }}</span>
+        <span>{{ b.total_sent }}/{{ b.total_recipients }} terkirim</span>
+        {% if b.total_failed %}<span class="broadcast-failed">{{ b.total_failed }} gagal</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="admin-panel" id="panel-pendaftaran">
+  <div class="admin-panel-head">
+    <h2>Daftar pendaftaran</h2>
+    <p>Seluruh pendaftaran tenant beserta status pembayaran.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>No. pendaftaran</th>
+          <th>Institusi</th>
+          <th>PIC</th>
+          <th>Kontak</th>
+          <th>Booth</th>
+          <th>Karya / produk</th>
+          <th>Nominal</th>
+          <th>Tanggal</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tenants %}
+        <tr>
+          <td class="mono">{{ t.order_id }}</td>
+          <td>{{ t.institution_name }}</td>
+          <td>{{ t.pic_name }}</td>
+          <td>
+            <div class="contact-cell">
+              <span>{{ t.email }}</span>
+              <span>{{ t.phone }}</span>
+            </div>
+          </td>
+          <td>{{ t.booth_type.name if t.booth_type else "—" }}</td>
+          <td class="desc-cell">
+            {% if t.description %}<span title="{{ t.description }}">{{ t.description }}</span>
+            {% else %}<span class="desc-empty">&mdash;</span>{% endif %}
+          </td>
+          <td>Rp {{ "{:,}".format(t.price_at_registration).replace(",", ".") }}</td>
+          <td>{{ t.created_at.strftime("%d %b %Y %H:%M") }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin_update_tenant_status', tenant_id=t.id) }}"
+                    class="status-form js-status-form"
+                    data-order="{{ t.order_id }}" data-current="{{ t.payment_status }}">
+              <select name="payment_status" class="status-select status-{{ t.payment_status }}">
+                {% for s in ["pending", "paid", "expired", "cancelled", "failed", "refunded"] %}
+                <option value="{{ s }}" {% if t.payment_status == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td>
+              <form method="POST" action="{{ url_for('admin_delete_tenant', tenant_id=t.id) }}"
+                    class="js-delete-form"
+                    data-order="{{ t.order_id }}" data-inst="{{ t.institution_name }}">
+                <button type="submit" class="btn-icon-danger">Hapus</button>
+              </form>
+            </td>
+</tr>
+        {% else %}
+        <tr><td colspan="10" class="empty-row">Belum ada pendaftaran masuk.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+<!-- Dialog konfirmasi -->
+<div class="confirm-overlay" id="confirm-modal" hidden>
+  <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <span class="confirm-icon" id="confirm-icon">!</span>
+    <h2 id="confirm-title">Konfirmasi</h2>
+    <p class="confirm-text" id="confirm-text"></p>
+    <div class="confirm-detail" id="confirm-detail" hidden></div>
+    <div class="confirm-actions">
+      <button type="button" class="btn-outline" id="confirm-cancel">Batal</button>
+      <button type="button" class="btn-primary" id="confirm-ok">Ya, lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/broadcast.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/confirm.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="status-section">
+  <div class="wrap status-card">
+    <span class="status-pill status-{{ tenant.payment_status }}">
+      {% if tenant.payment_status == "paid" %}Pembayaran diterima
+      {% elif tenant.payment_status == "pending" %}Menunggu pembayaran
+      {% elif tenant.payment_status == "expired" %}Kedaluwarsa
+      {% elif tenant.payment_status == "cancelled" %}Dibatalkan
+      {% elif tenant.payment_status == "failed" %}Gagal
+      {% else %}{{ tenant.payment_status }}
+      {% endif %}
+    </span>
+    <h1>Status pendaftaran</h1>
+    <p class="order-id">Nomor pendaftaran: <strong>{{ tenant.order_id }}</strong></p>
+
+    <div class="status-details">
+      <div><span>Institusi</span><strong>{{ tenant.institution_name }}</strong></div>
+      <div><span>PIC</span><strong>{{ tenant.pic_name }}</strong></div>
+      <div><span>Jenis booth</span><strong>{{ tenant.booth_type.name }}</strong></div>
+      <div><span>Nominal</span><strong>Rp {{ "{:,}".format(tenant.price_at_registration).replace(",", ".") }}</strong></div>
+    </div>
+
+    {% if tenant.description %}
+    <div class="status-desc">
+      <span class="status-desc-label">Karya / produk yang ditampilkan</span>
+      <p>{{ tenant.description }}</p>
+    </div>
+    {% endif %}
+
+    {% if tenant.payment_status == "paid" %}
+    <p class="status-hint">
+      Pembayaran Anda sudah kami terima dan slot booth resmi terkunci.
+      Bukti pembayaran telah dikirim ke <strong>{{ tenant.email }}</strong>.
+      Informasi teknis pelaksanaan akan menyusul menjelang acara.
+    </p>
+    {% elif tenant.payment_status == "pending" %}
+    <p class="status-hint">
+      Kami menunggu pembayaran Anda. Slot booth belum terkunci sampai pembayaran diterima.
+      Jika Anda sudah membayar, status di halaman ini akan berubah otomatis dalam beberapa menit
+      &mdash; muat ulang halaman untuk memeriksa.
+    </p>
+    {% elif tenant.payment_status in ("expired", "cancelled", "failed") %}
+    <p class="status-hint">
+      Pendaftaran ini tidak dapat dilanjutkan. Silakan mendaftar ulang, atau hubungi panitia
+      bila Anda merasa sudah melakukan pembayaran.
+    </p>
+    {% elif tenant.payment_status == "refunded" %}
+    <p class="status-hint">
+      Pembayaran untuk pendaftaran ini telah dikembalikan. Hubungi panitia bila ada pertanyaan.
+    </p>
+    {% endif %}
+
+    {% if tenant.payment_status == "paid" %}
+    <a href="{{ url_for('ticket_preview', order_id=tenant.order_id) }}" class="btn-primary btn-block">
+      Lihat kartu peserta
+    </a>
+    {% elif tenant.payment_status == "pending" %}
+    <div id="pay-error" class="form-error" style="display:none;"></div>
+    <button type="button" id="pay-again" class="btn-primary btn-block">
+      Lanjutkan pembayaran
+    </button>
+    {% endif %}
+
+    <div class="status-link-box">
+      <span class="status-link-label">Simpan tautan ini untuk memeriksa status kapan saja</span>
+      <div class="status-link-row">
+        <input type="text" id="status-url" readonly value="{{ request.url }}">
+        <button type="button" id="copy-url" class="btn-outline btn-sm">Salin</button>
+      </div>
+    </div>
+
+    <a href="/" class="btn-outline btn-block">Kembali ke halaman pendaftaran</a>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if config.get('MIDTRANS_IS_PRODUCTION') %}
+<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
+{% else %}
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/status.js') }}"></script>
+{% endblock %}

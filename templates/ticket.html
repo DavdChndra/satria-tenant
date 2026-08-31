@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Kartu peserta — {{ tenant.order_id }}{% endblock %}
+{% block content %}
+<section class="ticket-section">
+  <div class="wrap">
+
+    <div class="ticket-head">
+      <h1>Kartu peserta</h1>
+      <p>Tunjukkan kartu ini kepada panitia saat memasuki area pameran.</p>
+    </div>
+
+    <div class="id-card" id="id-card">
+      <div class="id-card-top">
+        <div class="brand">
+          <div class="brand-mark"><span>S</span></div>
+          SATRIA 2026
+        </div>
+        <span class="id-card-badge">Peserta</span>
+      </div>
+
+      <div class="id-card-body">
+        <div class="id-card-info">
+          <span class="id-label">Institusi / organisasi</span>
+          <h2>{{ tenant.institution_name }}</h2>
+
+          <span class="id-label">Penanggung jawab</span>
+          <p class="id-value">{{ tenant.pic_name }}</p>
+
+          <div class="id-meta">
+            <div>
+              <span class="id-label">Jenis booth</span>
+              <p class="id-value">{{ tenant.booth_type.name if tenant.booth_type else "—" }}</p>
+            </div>
+            <div>
+              <span class="id-label">No. pendaftaran</span>
+              <p class="id-value mono">{{ tenant.order_id }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="id-card-qr">
+          <img src="{{ url_for('ticket_qr', order_id=tenant.order_id) }}"
+               alt="Kode QR tiket masuk">
+          <span class="id-qr-note">Pindai saat masuk</span>
+        </div>
+      </div>
+
+      <div class="id-card-foot">
+        {% if event_info.venue_name %}<span>{{ event_info.venue_name }}</span>{% endif %}
+        {% if event_info.event_date %}<span>{{ event_info.event_date }}</span>{% endif %}
+      </div>
+    </div>
+
+    {% if tenant.is_checked_in %}
+    <p class="ticket-note ticket-note-in">
+      Kartu ini sudah dipindai pada {{ tenant.checked_in_at.strftime("%d %b %Y %H:%M") }}.
+    </p>
+    {% else %}
+    <p class="ticket-note">
+      Kode QR bersifat unik dan hanya berlaku untuk satu pendaftaran.
+      Jangan bagikan tangkapan layar kartu ini kepada pihak lain.
+    </p>
+    {% endif %}
+
+    <div class="ticket-actions">
+      <button type="button" class="btn-primary" onclick="window.print()">Cetak / simpan PDF</button>
+      <a href="{{ url_for('registration_status', order_id=tenant.order_id) }}" class="btn-outline">
+        Kembali ke status
+      </a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

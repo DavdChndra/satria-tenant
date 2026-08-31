@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pindai QR — Admin SATRIA 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="wrap admin-header-inner">
+    <div class="brand">
+      <div class="brand-mark"><span>S</span></div>
+      SATRIA 2026 <span class="admin-tag">Admin</span>
+    </div>
+    <div class="admin-header-actions">
+      <a href="{{ url_for('admin_dashboard') }}" class="admin-header-link">&larr; Dasbor</a>
+      <a href="{{ url_for('admin_logout') }}" class="btn-outline btn-sm">Keluar</a>
+    </div>
+  </div>
+</header>
+
+<nav class="admin-nav">
+  <div class="wrap admin-nav-inner">
+    <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-link">Dasbor</a>
+    <a href="#" class="admin-nav-link is-active">Pindai QR</a>
+  </div>
+</nav>
+
+<main class="wrap admin-main">
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+  <div class="flash-list">{% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}</div>
+  {% endif %}
+{% endwith %}
+
+<section class="admin-stats">
+  <div class="stat-card">
+    <span class="stat-label">Peserta lunas</span>
+    <span class="stat-value">{{ total_paid }}</span>
+  </div>
+  <div class="stat-card highlight">
+    <span class="stat-label">Sudah hadir</span>
+    <span class="stat-value">{{ total_in }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Belum hadir</span>
+    <span class="stat-value">{{ total_paid - total_in }}</span>
+  </div>
+</section>
+
+<section class="admin-panel">
+  <div class="admin-panel-head">
+    <h2>Pindai kartu peserta</h2>
+    <p>Arahkan kamera ke kode QR pada kartu peserta. Validasi berjalan otomatis.</p>
+  </div>
+
+  <div class="scan-grid">
+    <div class="scan-camera-box">
+      <div id="scan-viewport" class="scan-viewport">
+        <video id="scan-video" playsinline muted></video>
+        <div class="scan-frame"></div>
+      </div>
+      <div class="scan-controls">
+        <button type="button" id="scan-start" class="btn-primary btn-sm">Nyalakan kamera</button>
+        <button type="button" id="scan-stop" class="btn-outline btn-sm" hidden>Hentikan</button>
+      </div>
+      <p class="field-hint" id="scan-hint">
+        Kamera hanya dapat diakses melalui HTTPS atau localhost.
+      </p>
+    </div>
+
+    <div class="scan-result" id="scan-result">
+      <div class="scan-idle">
+        <span class="scan-idle-icon">&#9635;</span>
+        <p>Hasil pindaian akan tampil di sini.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel">
+  <div class="admin-panel-head">
+    <h2>Kehadiran terakhir</h2>
+    <p>15 peserta terakhir yang tervalidasi.</p>
+  </div>
+
+  {% if checked_in %}
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>No. pendaftaran</th>
+          <th>Institusi</th>
+          <th>PIC</th>
+          <th>Booth</th>
+          <th>Waktu masuk</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in checked_in %}
+        <tr>
+          <td class="mono">{{ t.order_id }}</td>
+          <td>{{ t.institution_name }}</td>
+          <td>{{ t.pic_name }}</td>
+          <td>{{ t.booth_type.name if t.booth_type else "—" }}</td>
+          <td>{{ t.checked_in_at.strftime("%d %b %Y %H:%M") }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin_scan_reset', tenant_id=t.id) }}"
+                  onsubmit="return confirm('Batalkan status hadir peserta ini?');">
+              <button type="submit" class="btn-outline btn-sm">Batalkan</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-note">Belum ada peserta yang tervalidasi.</p>
+  {% endif %}
+</section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="{{ url_for('static', filename='js/scan.js') }}"></script>
+</body>
+</html>

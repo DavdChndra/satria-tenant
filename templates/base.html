@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Pendaftaran Tenant Pameran — SATRIA 2026{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-mark"><span>S</span></div>
+      SATRIA 2026
+    </div>
+    <span class="header-sub">Pendaftaran tenant pameran</span>
+  </div>
+</header>
+
+<main>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+  <div class="wrap">
+    <div class="flash-list">
+      {% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">© 2026 SATRIA - Telkom University</div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

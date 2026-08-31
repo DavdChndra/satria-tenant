@@ -1,0 +1,20 @@
+{
+  // Berkas di templates/ adalah template Jinja2 (Flask), bukan HTML murni.
+  // Validator HTML bawaan VSCode menandai {% ... %} dan atribut seperti
+  // style="width:{{ pct }}%" sebagai error, padahal sintaksnya sah dan
+  // aplikasi berjalan normal. Baris di bawah mematikan peringatan palsu itu.
+  "html.validate.styles": false,
+  "html.validate.scripts": false,
+
+  // Bila Anda memasang ekstensi "Better Jinja" atau "Jinja HTML",
+  // hapus tanda komentar pada blok berikut untuk mendapatkan
+  // penyorotan warna yang tepat untuk sintaks Jinja:
+  // "files.associations": {
+  //   "**/templates/**/*.html": "jinja-html"
+  // },
+  // "emmet.includeLanguages": { "jinja-html": "html" },
+
+  "[html]": {
+    "editor.formatOnSave": false
+  }
+}

@@ -1,0 +1,24 @@
+# Systemd unit untuk menjalankan SATRIA 2026 lewat Gunicorn.
+#
+# Pasang:
+#   sudo cp deploy/satria-tenant.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now satria-tenant
+#
+# Sesuaikan User, WorkingDirectory, dan path venv di bawah dengan lokasi
+# sebenarnya di VPS (mis. ganti "deploy" dan "/home/deploy/satria-tenant").
+
+[Unit]
+Description=Gunicorn - SATRIA 2026 tenant registration
+After=network.target
+
+[Service]
+User=deploy
+Group=www-data
+WorkingDirectory=/home/deploy/satria-tenant
+ExecStart=/home/deploy/satria-tenant/venv/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

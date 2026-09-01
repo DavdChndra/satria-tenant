@@ -22,11 +22,11 @@
 </header>
 
 <main>
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
   <div class="wrap">
     <div class="flash-list">
-      {% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}
+      {% for category, m in messages %}<div class="flash-msg flash-{{ category }}">{{ m }}</div>{% endfor %}
     </div>
   </div>
   {% endif %}

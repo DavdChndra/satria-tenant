@@ -43,6 +43,28 @@ class BoothType(db.Model):
         }
 
 
+class AddOn(db.Model):
+    """Opsi tambahan saat pendaftaran (mis. dinner, cetak poster) — dikelola lewat panel admin."""
+    __tablename__ = "add_ons"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, default="")
+    price = db.Column(db.Integer, nullable=False, default=0)  # dalam Rupiah, tanpa desimal
+    is_active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "price": self.price,
+            "is_active": self.is_active,
+        }
+
+
 class Tenant(db.Model):
     """Pendaftar / peserta pameran."""
     __tablename__ = "tenants"
@@ -99,6 +121,16 @@ class Tenant(db.Model):
     def is_checked_in(self):
         return self.checked_in_at is not None
 
+    @property
+    def addon_total(self):
+        """Total harga seluruh opsi tambahan yang dipilih (snapshot saat daftar)."""
+        return sum(a.price for a in self.selected_add_ons)
+
+    @property
+    def total_amount(self):
+        """Total yang benar-benar ditagihkan: harga booth + seluruh opsi tambahan."""
+        return self.price_at_registration + self.addon_total
+
     @staticmethod
     def generate_order_id():
         return f"SATRIA26-{secrets.token_hex(5).upper()}"
@@ -114,11 +146,26 @@ class Tenant(db.Model):
             "booth_type": self.booth_type.name if self.booth_type else None,
             "description": self.description,
             "price_at_registration": self.price_at_registration,
+            "add_ons": [{"name": a.add_on.name, "price": a.price} for a in self.selected_add_ons],
+            "total_amount": self.total_amount,
             "payment_status": self.payment_status,
             "payment_type": self.payment_type,
             "paid_at": self.paid_at.isoformat() if self.paid_at else None,
             "created_at": self.created_at.isoformat(),
         }
+
+
+class TenantAddOn(db.Model):
+    """Opsi tambahan yang dipilih satu pendaftar, dengan harga snapshot saat mendaftar."""
+    __tablename__ = "tenant_add_ons"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
+    add_on_id = db.Column(db.Integer, db.ForeignKey("add_ons.id"), nullable=False)
+    price = db.Column(db.Integer, nullable=False)  # snapshot harga saat daftar
+
+    tenant = db.relationship("Tenant", backref=db.backref("selected_add_ons", lazy=True))
+    add_on = db.relationship("AddOn")
 
 
 class AdminUser(db.Model):
@@ -157,11 +204,18 @@ class EventInfo(db.Model):
     speakers_subtitle = db.Column(db.String(300),
                                   default="Menghadirkan praktisi dan akademisi di bidangnya.")
 
+    # Catatan/ketentuan acara — satu baris satu poin, tampil sebagai daftar di halaman depan.
+    event_notes = db.Column(db.Text, default="")
+
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @property
     def has_content(self):
         return any([self.venue_name, self.address, self.event_date])
+
+    @property
+    def notes_list(self):
+        return [line.strip() for line in (self.event_notes or "").splitlines() if line.strip()]
 
     @staticmethod
     def get_or_create():

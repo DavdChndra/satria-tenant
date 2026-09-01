@@ -18,7 +18,8 @@
       SATRIA 2026 <span class="admin-tag">Admin</span>
     </div>
     <div class="admin-header-actions">
-      <a href="{{ url_for('index') }}" class="admin-header-link" target="_blank" rel="noopener">Lihat halaman depan &nearr;</a>
+      <a href="{{ url_for('index') }}" class="admin-header-link" target="_blank" rel="noopener">Lihat halaman depan</a>
+      <a href="{{ url_for('admin_scan') }}" class="admin-header-link">Pindai QR</a>
       <a href="{{ url_for('admin_logout') }}" class="btn-outline btn-sm">Keluar</a>
     </div>
   </div>
@@ -32,16 +33,17 @@
     <a href="#panel-foto" class="admin-nav-link">Foto</a>
     <a href="#panel-pembicara" class="admin-nav-link">Pembicara</a>
     <a href="#panel-booth" class="admin-nav-link">Booth</a>
+    <a href="#panel-tambahan" class="admin-nav-link">Tambahan</a>
     <a href="#panel-email" class="admin-nav-link">Kirim email</a>
     <a href="#panel-pendaftaran" class="admin-nav-link">Pendaftaran</a>
-    <a href="{{ url_for('admin_scan') }}" class="admin-nav-link">Pindai QR</a>
+    <a href="#panel-akun" class="admin-nav-link">Akun</a>
   </div>
 </nav>
 
 <main class="wrap admin-main">
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-  <div class="flash-list">{% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}</div>
+  <div class="flash-list">{% for category, m in messages %}<div class="flash-msg flash-{{ category }}">{{ m }}</div>{% endfor %}</div>
   {% endif %}
 {% endwith %}
 
@@ -116,6 +118,7 @@
     <input type="hidden" name="speakers_eyebrow" value="{{ event_info.speakers_eyebrow or '' }}">
     <input type="hidden" name="speakers_title" value="{{ event_info.speakers_title or '' }}">
     <input type="hidden" name="speakers_subtitle" value="{{ event_info.speakers_subtitle or '' }}">
+    <input type="hidden" name="event_notes" value="{{ event_info.event_notes or '' }}">
 
     <button type="submit" class="btn-primary btn-sm">Simpan sambutan</button>
   </form>
@@ -146,6 +149,12 @@
       <label>Tautan Google Maps</label>
       <input type="text" name="maps_url" value="{{ event_info.maps_url }}" placeholder="https://maps.google.com/?q=...">
       <span class="field-hint">Buka Google Maps, cari lokasinya, klik <em>Bagikan</em>, lalu salin tautannya ke sini.</span>
+    </div>
+    <div class="field">
+      <label>Catatan acara</label>
+      <textarea name="event_notes" rows="4"
+                placeholder="Satu baris satu poin, mis.:&#10;Kehadiran maksimal 1 orang per pendaftaran&#10;Registrasi ulang pukul 08.00 - 09.00">{{ event_info.event_notes }}</textarea>
+      <span class="field-hint">Tampil sebagai daftar poin di bawah "Alur pendaftaran" pada halaman depan. Satu baris = satu poin.</span>
     </div>
     {# Nilai judul pembicara ikut dikirim agar tidak terhapus #}
     <input type="hidden" name="speakers_eyebrow" value="{{ event_info.speakers_eyebrow or '' }}">
@@ -468,6 +477,58 @@
   </div>
 </section>
 
+<section class="admin-panel" id="panel-tambahan">
+  <div class="admin-panel-head">
+    <h2>Opsi tambahan pendaftaran</h2>
+    <p>Mis. makan malam (dinner) atau cetak poster. Pendaftar memilihnya sendiri di form pendaftaran; harganya otomatis ditambahkan ke total sebelum dibayar.</p>
+  </div>
+
+  <div class="booth-settings-grid">
+    {% for addon in add_ons %}
+    <form class="booth-settings-card" method="POST" action="{{ url_for('admin_update_addon', addon_id=addon.id) }}">
+      <div class="field">
+        <label>Nama opsi</label>
+        <input type="text" name="name" value="{{ addon.name }}" required>
+      </div>
+      <div class="field">
+        <label>Deskripsi</label>
+        <textarea name="description" rows="2">{{ addon.description }}</textarea>
+      </div>
+      <div class="field">
+        <label>Harga (Rp)</label>
+        <input type="number" name="price" value="{{ addon.price }}" min="0" step="1000" required>
+      </div>
+      <div class="field-inline">
+        <label class="checkbox-label">
+          <input type="checkbox" name="is_active" {% if addon.is_active %}checked{% endif %}>
+          Tawarkan opsi ini di form pendaftaran
+        </label>
+      </div>
+      <button type="submit" class="btn-outline btn-sm">Simpan perubahan</button>
+    </form>
+    {% else %}
+    <p class="empty-note">Belum ada opsi tambahan.</p>
+    {% endfor %}
+
+    <form class="booth-settings-card booth-new" method="POST" action="{{ url_for('admin_new_addon') }}">
+      <h3>Tambah opsi baru</h3>
+      <div class="field">
+        <label>Nama opsi</label>
+        <input type="text" name="name" placeholder="mis. Cetak poster" required>
+      </div>
+      <div class="field">
+        <label>Deskripsi</label>
+        <textarea name="description" rows="2" placeholder="Deskripsi singkat opsi ini"></textarea>
+      </div>
+      <div class="field">
+        <label>Harga (Rp)</label>
+        <input type="number" name="price" min="0" step="1000" required>
+      </div>
+      <button type="submit" class="btn-primary btn-sm">Tambah opsi</button>
+    </form>
+  </div>
+</section>
+
 <section class="admin-panel" id="panel-email">
   <div class="admin-panel-head">
     <h2>Kirim informasi ke pendaftar</h2>
@@ -586,9 +647,12 @@
 </section>
 
 <section class="admin-panel" id="panel-pendaftaran">
-  <div class="admin-panel-head">
-    <h2>Daftar pendaftaran</h2>
-    <p>Seluruh pendaftaran tenant beserta status pembayaran.</p>
+  <div class="admin-panel-head admin-panel-head-row">
+    <div>
+      <h2>Daftar pendaftaran</h2>
+      <p>Seluruh pendaftaran tenant beserta status pembayaran.</p>
+    </div>
+    <a href="{{ url_for('admin_export_tenants_csv') }}" class="btn-outline btn-sm">Ekspor CSV</a>
   </div>
 
   <div class="table-wrap">
@@ -600,8 +664,9 @@
           <th>PIC</th>
           <th>Kontak</th>
           <th>Booth</th>
+          <th>Opsi tambahan</th>
           <th>Karya / produk</th>
-          <th>Nominal</th>
+          <th>Total</th>
           <th>Tanggal</th>
           <th>Status</th>
           <th></th>
@@ -621,15 +686,23 @@
           </td>
           <td>{{ t.booth_type.name if t.booth_type else "—" }}</td>
           <td class="desc-cell">
+            {% if t.selected_add_ons %}
+            <span title="{{ t.selected_add_ons|map(attribute='add_on.name')|join(', ') }}">
+              {{ t.selected_add_ons|map(attribute='add_on.name')|join(', ') }}
+            </span>
+            {% else %}<span class="desc-empty">&mdash;</span>{% endif %}
+          </td>
+          <td class="desc-cell">
             {% if t.description %}<span title="{{ t.description }}">{{ t.description }}</span>
             {% else %}<span class="desc-empty">&mdash;</span>{% endif %}
           </td>
-          <td>Rp {{ "{:,}".format(t.price_at_registration).replace(",", ".") }}</td>
+          <td>Rp {{ "{:,}".format(t.total_amount).replace(",", ".") }}</td>
           <td>{{ t.created_at.strftime("%d %b %Y %H:%M") }}</td>
           <td>
             <form method="POST" action="{{ url_for('admin_update_tenant_status', tenant_id=t.id) }}"
                     class="status-form js-status-form"
                     data-order="{{ t.order_id }}" data-current="{{ t.payment_status }}">
+              <input type="hidden" name="confirm_password">
               <select name="payment_status" class="status-select status-{{ t.payment_status }}">
                 {% for s in ["pending", "paid", "expired", "cancelled", "failed", "refunded"] %}
                 <option value="{{ s }}" {% if t.payment_status == s %}selected{% endif %}>{{ s }}</option>
@@ -646,11 +719,37 @@
             </td>
 </tr>
         {% else %}
-        <tr><td colspan="10" class="empty-row">Belum ada pendaftaran masuk.</td></tr>
+        <tr><td colspan="11" class="empty-row">Belum ada pendaftaran masuk.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+</section>
+
+<section class="admin-panel" id="panel-akun">
+  <div class="admin-panel-head">
+    <h2>Ubah password</h2>
+    <p>Masukkan password lama untuk mengonfirmasi identitas sebelum mengganti dengan yang baru.</p>
+  </div>
+
+  <form class="event-settings-form" method="POST" action="{{ url_for('admin_change_password') }}">
+    <div class="field">
+      <label for="old_password">Password lama</label>
+      <input type="password" id="old_password" name="old_password" autocomplete="current-password" required>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="new_password">Password baru</label>
+        <input type="password" id="new_password" name="new_password" autocomplete="new-password" minlength="8" required>
+      </div>
+      <div class="field">
+        <label for="new_password_confirm">Konfirmasi password baru</label>
+        <input type="password" id="new_password_confirm" name="new_password_confirm" autocomplete="new-password" minlength="8" required>
+      </div>
+    </div>
+    <span class="field-hint">Minimal 8 karakter.</span>
+    <button type="submit" class="btn-primary btn-sm">Simpan password</button>
+  </form>
 </section>
 
 </main>
@@ -661,6 +760,11 @@
     <h2 id="confirm-title">Konfirmasi</h2>
     <p class="confirm-text" id="confirm-text"></p>
     <div class="confirm-detail" id="confirm-detail" hidden></div>
+    <div class="field confirm-password-field" id="confirm-password-field" hidden>
+      <label for="confirm-password">Masukkan password Anda untuk konfirmasi</label>
+      <input type="password" id="confirm-password" autocomplete="current-password">
+      <span class="confirm-password-error" id="confirm-password-error" hidden>Password wajib diisi.</span>
+    </div>
     <div class="confirm-actions">
       <button type="button" class="btn-outline" id="confirm-cancel">Batal</button>
       <button type="button" class="btn-primary" id="confirm-ok">Ya, lanjutkan</button>

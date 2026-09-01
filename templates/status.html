@@ -18,7 +18,11 @@
       <div><span>Institusi</span><strong>{{ tenant.institution_name }}</strong></div>
       <div><span>PIC</span><strong>{{ tenant.pic_name }}</strong></div>
       <div><span>Jenis booth</span><strong>{{ tenant.booth_type.name }}</strong></div>
-      <div><span>Nominal</span><strong>Rp {{ "{:,}".format(tenant.price_at_registration).replace(",", ".") }}</strong></div>
+      <div><span>Harga booth</span><strong>Rp {{ "{:,}".format(tenant.price_at_registration).replace(",", ".") }}</strong></div>
+      {% for sel in tenant.selected_add_ons %}
+      <div><span>{{ sel.add_on.name }}</span><strong>Rp {{ "{:,}".format(sel.price).replace(",", ".") }}</strong></div>
+      {% endfor %}
+      <div class="status-details-total"><span>Total pembayaran</span><strong>Rp {{ "{:,}".format(tenant.total_amount).replace(",", ".") }}</strong></div>
     </div>
 
     {% if tenant.description %}
@@ -41,9 +45,10 @@
       &mdash; muat ulang halaman untuk memeriksa.
     </p>
     {% elif tenant.payment_status in ("expired", "cancelled", "failed") %}
-    <p class="status-hint">
-      Pendaftaran ini tidak dapat dilanjutkan. Silakan mendaftar ulang, atau hubungi panitia
-      bila Anda merasa sudah melakukan pembayaran.
+    <p class="status-hint status-hint-warn">
+      Pembayaran untuk pendaftaran ini {% if tenant.payment_status == "expired" %}kedaluwarsa{% elif tenant.payment_status == "cancelled" %}dibatalkan{% else %}gagal diproses{% endif %}
+      dan <strong>slot booth belum terpesan</strong>. Silakan mendaftar ulang lewat form pendaftaran,
+      atau hubungi panitia bila Anda merasa sudah melakukan pembayaran.
     </p>
     {% elif tenant.payment_status == "refunded" %}
     <p class="status-hint">
@@ -60,6 +65,8 @@
     <button type="button" id="pay-again" class="btn-primary btn-block">
       Lanjutkan pembayaran
     </button>
+    {% elif tenant.payment_status in ("expired", "cancelled", "failed") %}
+    <a href="/#form-pendaftaran" class="btn-primary btn-block">Daftar ulang</a>
     {% endif %}
 
     <div class="status-link-box">
@@ -70,7 +77,9 @@
       </div>
     </div>
 
+    {% if tenant.payment_status != "expired" %}
     <a href="/" class="btn-outline btn-block">Kembali ke halaman pendaftaran</a>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

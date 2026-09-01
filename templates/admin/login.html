@@ -14,9 +14,9 @@
   <div class="brand"><div class="brand-mark"><span>S</span></div>SATRIA 2026</div>
   <h1>Login admin</h1>
   <p class="admin-login-sub">Masuk untuk mengelola pendaftaran tenant.</p>
-  {% with messages = get_flashed_messages() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="flash-list">{% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}</div>
+      <div class="flash-list">{% for category, m in messages %}<div class="flash-msg flash-{{ category }}">{{ m }}</div>{% endfor %}</div>
     {% endif %}
   {% endwith %}
   <form method="POST" class="admin-login-form">

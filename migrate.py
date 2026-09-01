@@ -150,6 +150,35 @@ def main():
                 cur.execute(ddl)
                 changes.append(f"kolom speakers.{col}")
 
+    # Catatan/ketentuan acara di halaman depan
+    if table_exists(cur, "event_info") and not column_exists(cur, "event_info", "event_notes"):
+        cur.execute("ALTER TABLE event_info ADD COLUMN event_notes TEXT DEFAULT ''")
+        changes.append("kolom event_info.event_notes")
+
+    # Opsi tambahan pendaftaran (mis. dinner, cetak poster)
+    if not table_exists(cur, "add_ons"):
+        cur.execute("""
+            CREATE TABLE add_ons (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR(120) NOT NULL,
+                description TEXT DEFAULT '',
+                price INTEGER NOT NULL DEFAULT 0,
+                is_active BOOLEAN DEFAULT 1,
+                sort_order INTEGER DEFAULT 0,
+                created_at DATETIME
+            )""")
+        changes.append("tabel add_ons")
+
+    if not table_exists(cur, "tenant_add_ons"):
+        cur.execute("""
+            CREATE TABLE tenant_add_ons (
+                id INTEGER PRIMARY KEY,
+                tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+                add_on_id INTEGER NOT NULL REFERENCES add_ons(id),
+                price INTEGER NOT NULL
+            )""")
+        changes.append("tabel tenant_add_ons")
+
     con.commit()
     con.close()
 

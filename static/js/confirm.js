@@ -21,10 +21,14 @@
     const titleEl = document.getElementById("confirm-title");
     const textEl = document.getElementById("confirm-text");
     const detailEl = document.getElementById("confirm-detail");
+    const passwordFieldEl = document.getElementById("confirm-password-field");
+    const passwordInput = document.getElementById("confirm-password");
+    const passwordErrorEl = document.getElementById("confirm-password-error");
     const okBtn = document.getElementById("confirm-ok");
     const cancelBtn = document.getElementById("confirm-cancel");
 
     let onAccept = null;
+    let requirePassword = false;
     let lastFocused = null;
 
     function open(opts) {
@@ -40,6 +44,11 @@
         detailEl.hidden = true;
       }
 
+      requirePassword = !!opts.password;
+      if (passwordInput) passwordInput.value = "";
+      if (passwordErrorEl) passwordErrorEl.hidden = true;
+      if (passwordFieldEl) passwordFieldEl.hidden = !requirePassword;
+
       okBtn.textContent = opts.okLabel || "Ya, lanjutkan";
       card.classList.toggle("is-danger", !!opts.danger);
       okBtn.classList.toggle("btn-danger-solid", !!opts.danger);
@@ -49,7 +58,7 @@
       void overlay.offsetWidth;          // paksa reflow agar transisi berjalan
       overlay.classList.add("is-open");
       document.body.style.overflow = "hidden";
-      cancelBtn.focus();
+      (requirePassword && passwordInput ? passwordInput : cancelBtn).focus();
     }
 
     function close() {
@@ -57,13 +66,20 @@
       document.body.style.overflow = "";
       setTimeout(function () { overlay.hidden = true; }, 200);
       onAccept = null;
+      if (passwordInput) passwordInput.value = "";
       if (lastFocused) lastFocused.focus();
     }
 
     okBtn.addEventListener("click", function () {
+      if (requirePassword && !passwordInput.value) {
+        if (passwordErrorEl) passwordErrorEl.hidden = false;
+        passwordInput.focus();
+        return;
+      }
       const fn = onAccept;
+      const password = passwordInput ? passwordInput.value : "";
       close();
-      if (fn) fn();
+      if (fn) fn(password);
     });
     cancelBtn.addEventListener("click", close);
     overlay.addEventListener("click", function (e) {
@@ -99,7 +115,12 @@
                 "dan mengirim email bukti pembayaran.</p>"
               : ""),
           okLabel: "Ya, ubah status",
-          onAccept: function () { form.submit(); },
+          password: true,
+          onAccept: function (password) {
+            const pwInput = form.querySelector('input[name="confirm_password"]');
+            if (pwInput) pwInput.value = password;
+            form.submit();
+          },
         });
 
         // kembalikan pilihan semula sampai admin benar-benar menyetujui

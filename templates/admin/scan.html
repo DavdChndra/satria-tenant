@@ -18,7 +18,7 @@
       SATRIA 2026 <span class="admin-tag">Admin</span>
     </div>
     <div class="admin-header-actions">
-      <a href="{{ url_for('admin_dashboard') }}" class="admin-header-link">&larr; Dasbor</a>
+      <a href="{{ url_for('admin_dashboard') }}" class="admin-header-link">Dasboard Admin</a>
       <a href="{{ url_for('admin_logout') }}" class="btn-outline btn-sm">Keluar</a>
     </div>
   </div>
@@ -26,15 +26,14 @@
 
 <nav class="admin-nav">
   <div class="wrap admin-nav-inner">
-    <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-link">Dasbor</a>
     <a href="#" class="admin-nav-link is-active">Pindai QR</a>
   </div>
 </nav>
 
 <main class="wrap admin-main">
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-  <div class="flash-list">{% for m in messages %}<div class="flash-msg">{{ m }}</div>{% endfor %}</div>
+  <div class="flash-list">{% for category, m in messages %}<div class="flash-msg flash-{{ category }}">{{ m }}</div>{% endfor %}</div>
   {% endif %}
 {% endwith %}
 
@@ -70,7 +69,7 @@
         <button type="button" id="scan-stop" class="btn-outline btn-sm" hidden>Hentikan</button>
       </div>
       <p class="field-hint" id="scan-hint">
-        Kamera hanya dapat diakses melalui HTTPS atau localhost.
+        Tekan tombol "nyalakan kamera" terlebih dahulu.
       </p>
     </div>
 

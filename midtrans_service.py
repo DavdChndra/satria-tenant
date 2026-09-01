@@ -16,10 +16,13 @@ def get_snap_client():
     )
 
 
-def create_transaction(order_id: str, gross_amount: int, customer: dict, item_name: str):
+def create_transaction(order_id: str, gross_amount: int, customer: dict, item_name: str, item_details=None):
     """
     Membuat transaksi Snap dan mengembalikan dict berisi 'token' dan 'redirect_url'.
     customer: {"first_name": ..., "email": ..., "phone": ...}
+    item_details: daftar rincian item opsional (mis. booth + opsi tambahan), tiap
+    dict berisi id/price/quantity/name. Total price*quantity harus sama dengan
+    gross_amount. Bila tidak diisi, dipakai satu item tunggal senilai gross_amount.
     """
     snap = get_snap_client()
     param = {
@@ -27,7 +30,7 @@ def create_transaction(order_id: str, gross_amount: int, customer: dict, item_na
             "order_id": order_id,
             "gross_amount": gross_amount,
         },
-        "item_details": [
+        "item_details": item_details or [
             {
                 "id": "booth-registration",
                 "price": gross_amount,
@@ -43,6 +46,25 @@ def create_transaction(order_id: str, gross_amount: int, customer: dict, item_na
         "credit_card": {"secure": True},
     }
     return snap.create_transaction(param)
+
+
+def get_transaction_status(order_id: str):
+    """
+    Tanyakan status transaksi terkini langsung ke Midtrans (Core API), dipakai
+    untuk mendeteksi transaksi yang sudah kedaluwarsa/gagal di sisi Midtrans
+    tapi notifikasi webhook-nya belum (atau tidak) sampai ke server ini.
+    Mengembalikan None bila transaksi belum pernah diproses Midtrans sama
+    sekali atau bila terjadi error jaringan/API.
+    """
+    try:
+        core_api = midtransclient.CoreApi(
+            is_production=os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true",
+            server_key=os.environ.get("MIDTRANS_SERVER_KEY", ""),
+            client_key=os.environ.get("MIDTRANS_CLIENT_KEY", ""),
+        )
+        return core_api.transactions.status(order_id)
+    except Exception:
+        return None
 
 
 def verify_notification_signature(order_id: str, status_code: str, gross_amount: str, signature_key: str) -> bool:

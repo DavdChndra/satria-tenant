@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("registration-form");
   const submitBtn = document.getElementById("submit-btn");
   const errorBox = document.getElementById("form-error");
+  const totalBox = document.getElementById("reg-total");
+  const totalValue = document.getElementById("reg-total-value");
 
   function showError(message) {
     errorBox.textContent = message;
@@ -16,6 +18,55 @@ document.addEventListener("DOMContentLoaded", function () {
     submitBtn.disabled = isLoading;
     submitBtn.textContent = isLoading ? "Memproses..." : "Lanjutkan ke pembayaran";
   }
+
+  function formatRupiah(value) {
+    return "Rp " + value.toLocaleString("id-ID");
+  }
+
+  /* ---- opsi tambahan: tombol aktif/tidak aktif + total berjalan ---- */
+  const addonRows = Array.from(form.querySelectorAll(".addon-row"));
+
+  function selectedAddonIds() {
+    return addonRows
+      .filter(function (row) { return row.querySelector(".addon-toggle-btn").getAttribute("aria-pressed") === "true"; })
+      .map(function (row) { return row.dataset.addonId; });
+  }
+
+  function updateTotal() {
+    if (!totalBox) return;
+    const boothInput = form.querySelector('input[name="booth_type_id"]:checked');
+    if (!boothInput) {
+      totalBox.hidden = true;
+      return;
+    }
+    const boothPrice = parseInt(boothInput.closest(".booth-option").querySelector(".booth-price").dataset.price || "0", 10);
+    let total = boothPrice;
+    addonRows.forEach(function (row) {
+      if (row.querySelector(".addon-toggle-btn").getAttribute("aria-pressed") === "true") {
+        total += parseInt(row.dataset.addonPrice || "0", 10);
+      }
+    });
+    totalValue.textContent = formatRupiah(total);
+    totalBox.hidden = false;
+  }
+
+  form.querySelectorAll('input[name="booth_type_id"]').forEach(function (radio) {
+    radio.addEventListener("change", updateTotal);
+  });
+
+  addonRows.forEach(function (row) {
+    const btn = row.querySelector(".addon-toggle-btn");
+    btn.addEventListener("click", function () {
+      const active = btn.getAttribute("aria-pressed") === "true";
+      btn.setAttribute("aria-pressed", String(!active));
+      btn.classList.toggle("is-active", !active);
+      btn.textContent = !active ? "Diikutkan" : "Tidak diikutkan";
+      row.classList.toggle("is-active", !active);
+      updateTotal();
+    });
+  });
+
+  updateTotal();
 
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -34,10 +85,11 @@ document.addEventListener("DOMContentLoaded", function () {
       phone: form.phone.value.trim(),
       booth_type_id: boothInput.value,
       description: form.description.value.trim(),
+      add_on_ids: selectedAddonIds(),
     };
 
     for (const [key, value] of Object.entries(payload)) {
-      if (key === "description") continue;   // opsional
+      if (key === "description" || key === "add_on_ids") continue;   // opsional
       if (!value) {
         showError("Mohon lengkapi semua data sebelum melanjutkan.");
         return;

@@ -187,7 +187,7 @@
             <div class="booth-option-body">
               <div class="booth-option-head">
                 <span class="booth-name">{{ booth.name }}</span>
-                <span class="booth-price">Rp {{ "{:,}".format(booth.price).replace(",", ".") }}</span>
+                <span class="booth-price" data-price="{{ booth.price }}">Rp {{ "{:,}".format(booth.price).replace(",", ".") }}</span>
               </div>
               <p class="booth-desc">{{ booth.description }}</p>
               <span class="booth-slots">
@@ -210,6 +210,29 @@
         <span class="field-hint">Membantu panitia menata penempatan booth. Boleh dikosongkan.</span>
       </div>
 
+      {% if add_ons %}
+      <div class="field">
+        <label>Opsi tambahan (opsional)</label>
+        <div class="addon-list" id="addon-list">
+          {% for addon in add_ons %}
+          <div class="addon-row" data-addon-id="{{ addon.id }}" data-addon-price="{{ addon.price }}">
+            <div class="addon-row-info">
+              <span class="addon-row-name">{{ addon.name }}</span>
+              {% if addon.description %}<span class="addon-row-desc">{{ addon.description }}</span>{% endif %}
+              <span class="addon-row-price">+Rp {{ "{:,}".format(addon.price).replace(",", ".") }}</span>
+            </div>
+            <button type="button" class="addon-toggle-btn" aria-pressed="false">Tidak diikutkan</button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="reg-total" id="reg-total" hidden>
+        <span>Total pembayaran</span>
+        <strong id="reg-total-value">Rp 0</strong>
+      </div>
+
       <div id="form-error" class="form-error" style="display:none;"></div>
 
       <button type="submit" id="submit-btn" class="btn-primary btn-block">Lanjutkan ke pembayaran</button>
@@ -223,6 +246,17 @@
         <li>Selesaikan pembayaran melalui transfer bank, kartu, QRIS, atau e-wallet.</li>
         <li>Status pendaftaran otomatis diperbarui setelah pembayaran diterima.</li>
       </ol>
+
+      {% if event_info.notes_list %}
+      <div class="info-notes">
+        <h4>Catatan acara</h4>
+        <ul>
+          {% for note in event_info.notes_list %}
+          <li>{{ note }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
     </aside>
 
   </div>

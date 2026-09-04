@@ -5,14 +5,16 @@ import secrets
 from functools import wraps
 from datetime import datetime
 
+import mongoengine as me
+from bson.errors import InvalidId
 from dotenv import load_dotenv
 from flask import (Flask, render_template, request, jsonify, redirect,
                    url_for, session, flash, Response, abort)
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-from models import (db, BoothType, Tenant, AdminUser, EventInfo,
-                    GalleryPhoto, Broadcast, Speaker, AddOn, TenantAddOn)
+from models import (BoothType, Tenant, AdminUser, EventInfo,
+                    GalleryPhoto, Broadcast, Speaker, AddOn, SelectedAddOn)
 from midtrans_service import (create_transaction, verify_notification_signature,
                               map_transaction_status, get_transaction_status)
 from email_service import (send_registration_received, send_payment_success,
@@ -22,8 +24,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'satria.db')}"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-ganti-di-produksi")
 app.config["MIDTRANS_CLIENT_KEY"] = os.environ.get("MIDTRANS_CLIENT_KEY", "")
 app.config["MIDTRANS_IS_PRODUCTION"] = os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true"
@@ -37,7 +37,13 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Warna penanda tiap jenis booth pada kartu pratinjau di halaman depan
 BOOTH_COLORS = ["#2563EB", "#1F8A5B", "#E0722F", "#6D28D9"]
 
-db.init_app(app)
+MONGODB_URI = os.environ.get("MONGODB_URI")
+if not MONGODB_URI:
+    raise RuntimeError(
+        "MONGODB_URI belum diisi di .env. Contoh: "
+        "mongodb+srv://user:password@cluster.mongodb.net/satria"
+    )
+me.connect(host=MONGODB_URI)
 
 
 # ---------- helper ----------
@@ -49,6 +55,47 @@ def admin_required(view):
             return redirect(url_for("admin_login"))
         return view(*args, **kwargs)
     return wrapped
+
+
+def get_or_none(model, doc_id):
+    """Ambil dokumen berdasarkan id (ObjectId), atau None bila id tidak valid/tidak ada."""
+    if not doc_id:
+        return None
+    try:
+        return model.objects(pk=doc_id).first()
+    except (InvalidId, me.ValidationError, TypeError):
+        return None
+
+
+def get_or_404(model, doc_id):
+    obj = get_or_none(model, doc_id)
+    if obj is None:
+        abort(404)
+    return obj
+
+
+def get_by_field_or_404(model, **kwargs):
+    obj = model.objects(**kwargs).first()
+    if obj is None:
+        abort(404)
+    return obj
+
+
+def valid_object_ids(id_list):
+    """Saring hanya string yang berbentuk ObjectId (24 karakter heksadesimal) yang sah."""
+    from bson import ObjectId
+    result = []
+    for i in id_list or []:
+        try:
+            result.append(ObjectId(str(i)))
+        except (InvalidId, TypeError):
+            continue
+    return result
+
+
+def next_sort_order(model):
+    last = model.objects.order_by("-sort_order").first()
+    return (last.sort_order if last else 0) + 1
 
 
 def save_uploaded_photo(file_storage):
@@ -78,57 +125,40 @@ def delete_photo_file(filename):
 
 def seed_defaults():
     """Isi data awal jika database masih kosong."""
-    if BoothType.query.count() == 0:
-        db.session.add_all([
-            BoothType(name="Booth standar", description="Ruang pameran 2x2 meter, meja, dua kursi.",
-                       price=250000, quota=20, sort_order=1),
-            BoothType(name="Booth premium", description="Ruang pameran 3x3 meter, signage, slot demo panggung utama.",
-                       price=300000, quota=10, sort_order=2),
-        ])
-    if EventInfo.query.count() == 0:
-        db.session.add(EventInfo(
+    if BoothType.objects.count() == 0:
+        BoothType(name="Booth standar", description="Ruang pameran 2x2 meter, meja, dua kursi.",
+                  price=250000, quota=20, sort_order=1).save()
+        BoothType(name="Booth premium", description="Ruang pameran 3x3 meter, signage, slot demo panggung utama.",
+                  price=300000, quota=10, sort_order=2).save()
+    if EventInfo.objects.count() == 0:
+        EventInfo(
             venue_name="Gedung Serbaguna Telkom University",
             address="Jl. Telekomunikasi No. 1, Terusan Buahbatu, Bandung, Jawa Barat 40257",
             event_date="15 - 17 Mei 2026",
             maps_url="https://maps.google.com/?q=Telkom+University+Bandung",
-        ))
-    if AdminUser.query.count() == 0:
-        db.session.add(AdminUser(
+        ).save()
+    if AdminUser.objects.count() == 0:
+        AdminUser(
             username="admin",
             password_hash=generate_password_hash("ubah-password-ini"),
-        ))
-    if AddOn.query.count() == 0:
-        db.session.add_all([
-            AddOn(name="Makan malam (dinner)",
-                  description="Termasuk makan malam bersama panitia dan peserta lain di hotel.",
-                  price=75000, sort_order=1),
-            AddOn(name="Cetak poster",
-                  description="Poster A1 dicetak panitia dan dipasang di area booth Anda.",
-                  price=40000, sort_order=2),
-        ])
-    db.session.commit()
+        ).save()
+    if AddOn.objects.count() == 0:
+        AddOn(name="Makan malam (dinner)",
+              description="Termasuk makan malam bersama panitia dan peserta lain di hotel.",
+              price=75000, sort_order=1).save()
+        AddOn(name="Cetak poster",
+              description="Poster A1 dicetak panitia dan dipasang di area booth Anda.",
+              price=40000, sort_order=2).save()
 
 
 # ---------- halaman publik ----------
 
 @app.route("/")
 def index():
-    booth_types = (BoothType.query
-                   .filter_by(is_active=True)
-                   .order_by(BoothType.sort_order)
-                   .all())
-    photos = (GalleryPhoto.query
-              .filter_by(is_active=True)
-              .order_by(GalleryPhoto.sort_order, GalleryPhoto.id)
-              .all())
-    speakers = (Speaker.query
-                .filter_by(is_active=True)
-                .order_by(Speaker.sort_order, Speaker.id)
-                .all())
-    add_ons = (AddOn.query
-              .filter_by(is_active=True)
-              .order_by(AddOn.sort_order, AddOn.id)
-              .all())
+    booth_types = BoothType.objects(is_active=True).order_by("sort_order")
+    photos = GalleryPhoto.objects(is_active=True).order_by("sort_order", "id")
+    speakers = Speaker.objects(is_active=True).order_by("sort_order", "id")
+    add_ons = AddOn.objects(is_active=True).order_by("sort_order", "id")
     return render_template("index.html",
                            booth_types=booth_types,
                            photos=photos,
@@ -148,18 +178,16 @@ def api_register():
     if missing:
         return jsonify({"error": f"Field wajib belum diisi: {', '.join(missing)}"}), 400
 
-    booth = BoothType.query.get(data["booth_type_id"])
+    booth = get_or_none(BoothType, data["booth_type_id"])
     if not booth or not booth.is_active:
         return jsonify({"error": "Jenis booth tidak ditemukan atau tidak aktif."}), 400
     if booth.slots_remaining <= 0:
         return jsonify({"error": "Kuota booth ini sudah penuh."}), 400
 
-    requested_addon_ids = data.get("add_on_ids") or []
+    requested_addon_ids = valid_object_ids(data.get("add_on_ids") or [])
     selected_add_ons = []
     if requested_addon_ids:
-        selected_add_ons = (AddOn.query
-                            .filter(AddOn.id.in_(requested_addon_ids), AddOn.is_active.is_(True))
-                            .all())
+        selected_add_ons = list(AddOn.objects(id__in=requested_addon_ids, is_active=True))
 
     order_id = Tenant.generate_order_id()
     tenant = Tenant(
@@ -168,16 +196,13 @@ def api_register():
         pic_name=data["pic_name"].strip(),
         email=data["email"].strip(),
         phone=data["phone"].strip(),
-        booth_type_id=booth.id,
+        booth_type=booth,
         price_at_registration=booth.price,
         description=str(data.get("description", "")).strip(),
         payment_status="pending",
+        selected_add_ons=[SelectedAddOn(add_on=a, name=a.name, price=a.price) for a in selected_add_ons],
     )
-    db.session.add(tenant)
-    db.session.flush()  # perlu tenant.id sebelum menyimpan opsi tambahan
-    for addon in selected_add_ons:
-        db.session.add(TenantAddOn(tenant_id=tenant.id, add_on_id=addon.id, price=addon.price))
-    db.session.commit()
+    tenant.save()
 
     item_details = [{"id": f"booth-{booth.id}", "price": booth.price, "quantity": 1, "name": booth.name[:50]}]
     for addon in selected_add_ons:
@@ -200,7 +225,7 @@ def api_register():
 
     tenant.snap_token = result.get("token", "")
     tenant.midtrans_order_id = order_id
-    db.session.commit()
+    tenant.save()
 
     send_registration_received(tenant, url_for("registration_status", order_id=order_id, _external=True))
 
@@ -231,7 +256,7 @@ def refresh_pending_tenant_status(tenant):
 
 @app.route("/status/<order_id>")
 def registration_status(order_id):
-    tenant = Tenant.query.filter_by(order_id=order_id).first_or_404()
+    tenant = get_by_field_or_404(Tenant, order_id=order_id)
     refresh_pending_tenant_status(tenant)
     return render_template("status.html", tenant=tenant)
 
@@ -242,7 +267,7 @@ def api_resume_payment(order_id):
     Buka kembali jendela pembayaran untuk pendaftaran yang belum lunas.
     Token lama dipakai ulang; bila sudah tidak berlaku, dibuatkan yang baru.
     """
-    tenant = Tenant.query.filter_by(order_id=order_id).first_or_404()
+    tenant = get_by_field_or_404(Tenant, order_id=order_id)
     refresh_pending_tenant_status(tenant)
 
     if tenant.payment_status == "paid":
@@ -257,11 +282,11 @@ def api_resume_payment(order_id):
     # memakai nomor baru. Nomor pendaftaran (order_id) sengaja TIDAK diubah
     # agar tautan status yang sudah disalin pendaftar tetap berlaku.
     new_midtrans_id = Tenant.generate_order_id()
-    item_details = [{"id": f"booth-{tenant.booth_type_id}", "price": tenant.price_at_registration,
+    item_details = [{"id": f"booth-{tenant.booth_type.id}", "price": tenant.price_at_registration,
                       "quantity": 1, "name": tenant.booth_type.name[:50]}]
     for sel in tenant.selected_add_ons:
-        item_details.append({"id": f"addon-{sel.add_on_id}", "price": sel.price,
-                             "quantity": 1, "name": sel.add_on.name[:50]})
+        item_details.append({"id": f"addon-{sel.add_on.id if sel.add_on else sel.name}", "price": sel.price,
+                             "quantity": 1, "name": sel.name[:50]})
     try:
         result = create_transaction(
             order_id=new_midtrans_id,
@@ -277,14 +302,14 @@ def api_resume_payment(order_id):
 
     tenant.midtrans_order_id = new_midtrans_id
     tenant.snap_token = result.get("token", "")
-    db.session.commit()
+    tenant.save()
     return jsonify({"snap_token": tenant.snap_token, "order_id": tenant.order_id})
 
 
 @app.route("/ticket/<order_id>/qr.svg")
 def ticket_qr(order_id):
     """Gambar QR tiket masuk. Isinya token acak, bukan nomor pendaftaran."""
-    tenant = Tenant.query.filter_by(order_id=order_id).first_or_404()
+    tenant = get_by_field_or_404(Tenant, order_id=order_id)
     if tenant.payment_status != "paid" or not tenant.checkin_token:
         abort(404)
 
@@ -305,12 +330,12 @@ def ticket_qr(order_id):
 @app.route("/ticket/<order_id>")
 def ticket_preview(order_id):
     """Pratinjau ID card peserta — hanya untuk pendaftaran yang sudah lunas."""
-    tenant = Tenant.query.filter_by(order_id=order_id).first_or_404()
+    tenant = get_by_field_or_404(Tenant, order_id=order_id)
     if tenant.payment_status != "paid":
         flash("Kartu peserta terbit setelah pembayaran lunas.", "error")
         return redirect(url_for("registration_status", order_id=order_id))
     tenant.ensure_checkin_token()
-    db.session.commit()
+    tenant.save()
     return render_template("ticket.html", tenant=tenant,
                            event_info=EventInfo.get_or_create())
 
@@ -339,7 +364,7 @@ def sync_tenant_payment_status(tenant, transaction_status, fraud_status,
     elif new_status in ("expired", "cancelled", "failed") and status_changed:
         # Token Snap lama sudah tidak berlaku, jangan ditawarkan lagi untuk dibayar.
         tenant.snap_token = ""
-    db.session.commit()
+    tenant.save()
 
     return new_status == "paid" and not was_paid
 
@@ -365,8 +390,8 @@ def midtrans_webhook():
 
     # Midtrans mengirim nomor transaksi yang sedang berjalan. Untuk pendaftaran
     # yang pembayarannya pernah diulang, nomor itu ada di midtrans_order_id.
-    tenant = (Tenant.query.filter_by(midtrans_order_id=order_id).first()
-              or Tenant.query.filter_by(order_id=order_id).first())
+    tenant = (Tenant.objects(midtrans_order_id=order_id).first()
+              or Tenant.objects(order_id=order_id).first())
     if not tenant:
         return jsonify({"error": "Order tidak ditemukan"}), 404
 
@@ -391,9 +416,9 @@ def admin_login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        user = AdminUser.query.filter_by(username=username).first()
+        user = AdminUser.objects(username=username).first()
         if user and check_password_hash(user.password_hash, password):
-            session["admin_id"] = user.id
+            session["admin_id"] = str(user.id)
             return redirect(url_for("admin_dashboard"))
         flash("Username atau password salah.", "error")
     return render_template("admin/login.html")
@@ -408,17 +433,17 @@ def admin_logout():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
-    booth_types = BoothType.query.order_by(BoothType.sort_order).all()
+    tenants = list(Tenant.objects.order_by("-created_at"))
+    booth_types = BoothType.objects.order_by("sort_order")
 
     total_paid = sum(t.total_amount for t in tenants if t.payment_status == "paid")
     total_pending = sum(1 for t in tenants if t.payment_status == "pending")
     total_registrations = len(tenants)
 
-    photos = GalleryPhoto.query.order_by(GalleryPhoto.sort_order, GalleryPhoto.id).all()
-    broadcasts = Broadcast.query.order_by(Broadcast.created_at.desc()).limit(10).all()
-    speakers = Speaker.query.order_by(Speaker.sort_order, Speaker.id).all()
-    add_ons = AddOn.query.order_by(AddOn.sort_order, AddOn.id).all()
+    photos = GalleryPhoto.objects.order_by("sort_order", "id")
+    broadcasts = Broadcast.objects.order_by("-created_at").limit(10)
+    speakers = Speaker.objects.order_by("sort_order", "id")
+    add_ons = AddOn.objects.order_by("sort_order", "id")
 
     return render_template(
         "admin/dashboard.html",
@@ -443,7 +468,7 @@ def admin_dashboard():
 @admin_required
 def admin_export_tenants_csv():
     """Unduh seluruh daftar pendaftaran sebagai berkas CSV."""
-    tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
+    tenants = Tenant.objects.order_by("-created_at")
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -454,7 +479,7 @@ def admin_export_tenants_csv():
         "Tanggal Daftar", "Tanggal Lunas", "Waktu Check-in",
     ])
     for t in tenants:
-        addon_text = "; ".join(f"{sel.add_on.name} (Rp{sel.price:,})".replace(",", ".")
+        addon_text = "; ".join(f"{sel.name} (Rp{sel.price:,})".replace(",", ".")
                                for sel in t.selected_add_ons) or "-"
         writer.writerow([
             t.order_id,
@@ -488,13 +513,11 @@ def admin_export_tenants_csv():
 @admin_required
 def admin_scan():
     """Halaman pemindai QR untuk validasi peserta di hari pelaksanaan."""
-    checked_in = (Tenant.query
-                  .filter(Tenant.checked_in_at.isnot(None))
-                  .order_by(Tenant.checked_in_at.desc())
-                  .limit(15)
-                  .all())
-    total_paid = Tenant.query.filter_by(payment_status="paid").count()
-    total_in = Tenant.query.filter(Tenant.checked_in_at.isnot(None)).count()
+    checked_in = (Tenant.objects(checked_in_at__ne=None)
+                  .order_by("-checked_in_at")
+                  .limit(15))
+    total_paid = Tenant.objects(payment_status="paid").count()
+    total_in = Tenant.objects(checked_in_at__ne=None).count()
     return render_template("admin/scan.html",
                            checked_in=checked_in,
                            total_paid=total_paid,
@@ -513,7 +536,7 @@ def admin_scan_verify():
     if not token:
         return jsonify({"status": "invalid", "message": "Kode kosong."}), 400
 
-    tenant = Tenant.query.filter_by(checkin_token=token).first()
+    tenant = Tenant.objects(checkin_token=token).first()
     if not tenant:
         return jsonify({"status": "invalid",
                         "message": "Kode tidak dikenali. Kartu ini tidak sah."}), 404
@@ -526,7 +549,7 @@ def admin_scan_verify():
     already = tenant.is_checked_in
     if not already:
         tenant.checked_in_at = datetime.utcnow()
-        db.session.commit()
+        tenant.save()
 
     return jsonify({
         "status": "repeat" if already else "ok",
@@ -540,21 +563,21 @@ def admin_scan_verify():
     })
 
 
-@app.route("/admin/scan/reset/<int:tenant_id>", methods=["POST"])
+@app.route("/admin/scan/reset/<tenant_id>", methods=["POST"])
 @admin_required
 def admin_scan_reset(tenant_id):
     """Batalkan status hadir, misalnya bila salah pindai."""
-    tenant = Tenant.query.get_or_404(tenant_id)
+    tenant = get_or_404(Tenant, tenant_id)
     tenant.checked_in_at = None
-    db.session.commit()
+    tenant.save()
     flash(f"Status hadir {tenant.order_id} dibatalkan.", "success")
     return redirect(url_for("admin_scan"))
 
 
-@app.route("/admin/booth/<int:booth_id>/update", methods=["POST"])
+@app.route("/admin/booth/<booth_id>/update", methods=["POST"])
 @admin_required
 def admin_update_booth(booth_id):
-    booth = BoothType.query.get_or_404(booth_id)
+    booth = get_or_404(BoothType, booth_id)
     booth.name = request.form.get("name", booth.name).strip()
     booth.description = request.form.get("description", booth.description)
     try:
@@ -564,7 +587,7 @@ def admin_update_booth(booth_id):
         flash("Harga dan kuota harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard"))
     booth.is_active = request.form.get("is_active") == "on"
-    db.session.commit()
+    booth.save()
     flash(f"Pengaturan '{booth.name}' berhasil disimpan.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -582,24 +605,22 @@ def admin_new_booth():
     if not name:
         flash("Nama jenis booth wajib diisi.", "error")
         return redirect(url_for("admin_dashboard"))
-    max_order = db.session.query(db.func.max(BoothType.sort_order)).scalar() or 0
-    db.session.add(BoothType(
+    BoothType(
         name=name,
         description=request.form.get("description", ""),
         price=price,
         quota=quota,
-        sort_order=max_order + 1,
-    ))
-    db.session.commit()
+        sort_order=next_sort_order(BoothType),
+    ).save()
     flash(f"Jenis booth '{name}' ditambahkan.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/addon/<int:addon_id>/update", methods=["POST"])
+@app.route("/admin/addon/<addon_id>/update", methods=["POST"])
 @admin_required
 def admin_update_addon(addon_id):
     """Ubah nama, deskripsi, harga, atau status aktif satu opsi tambahan."""
-    addon = AddOn.query.get_or_404(addon_id)
+    addon = get_or_404(AddOn, addon_id)
     name = request.form.get("name", "").strip()
     if not name:
         flash("Nama opsi tambahan wajib diisi.", "error")
@@ -612,7 +633,7 @@ def admin_update_addon(addon_id):
     addon.name = name
     addon.description = request.form.get("description", "").strip()
     addon.is_active = request.form.get("is_active") == "on"
-    db.session.commit()
+    addon.save()
     flash(f"Opsi tambahan '{addon.name}' berhasil disimpan.", "success")
     return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
 
@@ -630,14 +651,12 @@ def admin_new_addon():
     except ValueError:
         flash("Harga harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
-    max_order = db.session.query(db.func.max(AddOn.sort_order)).scalar() or 0
-    db.session.add(AddOn(
+    AddOn(
         name=name,
         description=request.form.get("description", "").strip(),
         price=price,
-        sort_order=max_order + 1,
-    ))
-    db.session.commit()
+        sort_order=next_sort_order(AddOn),
+    ).save()
     flash(f"Opsi tambahan '{name}' ditambahkan.", "success")
     return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
 
@@ -650,7 +669,7 @@ def admin_change_password():
     new_password = request.form.get("new_password", "")
     new_password_confirm = request.form.get("new_password_confirm", "")
 
-    user = AdminUser.query.get(session["admin_id"])
+    user = get_or_404(AdminUser, session["admin_id"])
 
     if not check_password_hash(user.password_hash, old_password):
         flash("Password lama tidak sesuai.", "error")
@@ -660,7 +679,7 @@ def admin_change_password():
         flash("Konfirmasi password baru tidak cocok.", "error")
     else:
         user.password_hash = generate_password_hash(new_password)
-        db.session.commit()
+        user.save()
         flash("Password berhasil diubah.", "success")
 
     return redirect(url_for("admin_dashboard", _anchor="panel-akun"))
@@ -690,7 +709,7 @@ def admin_update_event():
 
     info.event_notes = request.form.get("event_notes", "").strip()
 
-    db.session.commit()
+    info.save()
     flash("Informasi lokasi acara berhasil disimpan.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -705,7 +724,7 @@ def admin_upload_photo():
         return redirect(url_for("admin_dashboard"))
 
     caption = request.form.get("caption", "").strip()
-    max_order = db.session.query(db.func.max(GalleryPhoto.sort_order)).scalar() or 0
+    max_order = next_sort_order(GalleryPhoto) - 1
 
     saved, rejected = 0, 0
     for f in files:
@@ -714,13 +733,12 @@ def admin_upload_photo():
             rejected += 1
             continue
         max_order += 1
-        db.session.add(GalleryPhoto(
+        GalleryPhoto(
             filename=filename,
             caption=caption if len(files) == 1 else "",
             sort_order=max_order,
-        ))
+        ).save()
         saved += 1
-    db.session.commit()
 
     if saved:
         flash(f"{saved} foto berhasil diunggah.", "success")
@@ -729,11 +747,11 @@ def admin_upload_photo():
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/photo/<int:photo_id>/update", methods=["POST"])
+@app.route("/admin/photo/<photo_id>/update", methods=["POST"])
 @admin_required
 def admin_update_photo(photo_id):
     """Ubah keterangan, urutan, atau status tampil satu foto."""
-    photo = GalleryPhoto.query.get_or_404(photo_id)
+    photo = get_or_404(GalleryPhoto, photo_id)
     photo.caption = request.form.get("caption", "").strip()
     try:
         photo.sort_order = int(request.form.get("sort_order", photo.sort_order))
@@ -750,19 +768,18 @@ def admin_update_photo(photo_id):
         except (TypeError, ValueError):
             value = 50
         setattr(photo, field, max(0, min(100, value)))
-    db.session.commit()
+    photo.save()
     flash("Foto berhasil diperbarui.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/photo/<int:photo_id>/delete", methods=["POST"])
+@app.route("/admin/photo/<photo_id>/delete", methods=["POST"])
 @admin_required
 def admin_delete_photo(photo_id):
     """Hapus foto dari carousel beserta berkasnya."""
-    photo = GalleryPhoto.query.get_or_404(photo_id)
+    photo = get_or_404(GalleryPhoto, photo_id)
     delete_photo_file(photo.filename)
-    db.session.delete(photo)
-    db.session.commit()
+    photo.delete()
     flash("Foto berhasil dihapus.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -773,20 +790,17 @@ def _tenants_for_audience(audience, selected_ids=None):
     Untuk audience "custom", hanya tenant yang id-nya ada di selected_ids.
     """
     if audience == "custom":
-        ids = [i for i in (selected_ids or []) if str(i).isdigit()]
+        ids = valid_object_ids(selected_ids)
         if not ids:
             return []
-        return (Tenant.query
-                .filter(Tenant.id.in_([int(i) for i in ids]))
-                .order_by(Tenant.created_at)
-                .all())
+        return list(Tenant.objects(id__in=ids).order_by("created_at"))
 
-    q = Tenant.query
+    q = Tenant.objects
     if audience == "paid":
-        q = q.filter_by(payment_status="paid")
+        q = q.filter(payment_status="paid")
     elif audience == "pending":
-        q = q.filter_by(payment_status="pending")
-    return q.order_by(Tenant.created_at).all()
+        q = q.filter(payment_status="pending")
+    return list(q.order_by("created_at"))
 
 
 @app.route("/admin/broadcast", methods=["POST"])
@@ -821,15 +835,14 @@ def admin_send_broadcast():
             sent += 1
     failed = len(recipients) - sent
 
-    db.session.add(Broadcast(
+    Broadcast(
         subject=subject,
         body=message,
         audience=audience,
         total_recipients=len(recipients),
         total_sent=sent,
         total_failed=failed,
-    ))
-    db.session.commit()
+    ).save()
 
     if failed:
         flash(f"Email terkirim ke {sent} dari {len(recipients)} penerima. {failed} gagal dikirim.", "error")
@@ -854,24 +867,22 @@ def admin_new_speaker():
         if not filename:
             flash("Foto ditolak — hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
 
-    max_order = db.session.query(db.func.max(Speaker.sort_order)).scalar() or 0
-    db.session.add(Speaker(
+    Speaker(
         name=name,
         institution=request.form.get("institution", "").strip(),
         topic=request.form.get("topic", "").strip(),
         photo=filename,
-        sort_order=max_order + 1,
-    ))
-    db.session.commit()
+        sort_order=next_sort_order(Speaker),
+    ).save()
     flash(f"Pembicara '{name}' ditambahkan.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/speaker/<int:speaker_id>/update", methods=["POST"])
+@app.route("/admin/speaker/<speaker_id>/update", methods=["POST"])
 @admin_required
 def admin_update_speaker(speaker_id):
     """Perbarui data pembicara; foto lama diganti hanya bila ada unggahan baru."""
-    speaker = Speaker.query.get_or_404(speaker_id)
+    speaker = get_or_404(Speaker, speaker_id)
     speaker.name = request.form.get("name", speaker.name).strip()
     speaker.institution = request.form.get("institution", "").strip()
     speaker.topic = request.form.get("topic", "").strip()
@@ -898,33 +909,32 @@ def admin_update_speaker(speaker_id):
         else:
             flash("Foto ditolak — hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
 
-    db.session.commit()
+    speaker.save()
     flash(f"Data pembicara '{speaker.name}' disimpan.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/speaker/<int:speaker_id>/delete", methods=["POST"])
+@app.route("/admin/speaker/<speaker_id>/delete", methods=["POST"])
 @admin_required
 def admin_delete_speaker(speaker_id):
     """Hapus pembicara beserta fotonya."""
-    speaker = Speaker.query.get_or_404(speaker_id)
+    speaker = get_or_404(Speaker, speaker_id)
     delete_photo_file(speaker.photo)
     name = speaker.name
-    db.session.delete(speaker)
-    db.session.commit()
+    speaker.delete()
     flash(f"Pembicara '{name}' dihapus.", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/tenant/<int:tenant_id>/status", methods=["POST"])
+@app.route("/admin/tenant/<tenant_id>/status", methods=["POST"])
 @admin_required
 def admin_update_tenant_status(tenant_id):
     """Override manual status pembayaran, misalnya untuk pembayaran offline/khusus."""
-    tenant = Tenant.query.get_or_404(tenant_id)
+    tenant = get_or_404(Tenant, tenant_id)
     new_status = request.form.get("payment_status")
     confirm_password = request.form.get("confirm_password", "")
 
-    admin = AdminUser.query.get(session["admin_id"])
+    admin = get_or_404(AdminUser, session["admin_id"])
     if not check_password_hash(admin.password_hash, confirm_password):
         flash("Password salah. Status pembayaran tidak diubah.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
@@ -936,7 +946,7 @@ def admin_update_tenant_status(tenant_id):
             tenant.paid_at = datetime.utcnow()
         if new_status == "paid":
             tenant.ensure_checkin_token()
-        db.session.commit()
+        tenant.save()
         flash(f"Status pendaftaran {tenant.order_id} diperbarui menjadi '{new_status}'.", "success")
 
         # Pembayaran offline/khusus yang di-acc manual juga dikirimi bukti lunas.
@@ -947,7 +957,7 @@ def admin_update_tenant_status(tenant_id):
     return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
 
 
-@app.route("/admin/tenant/<int:tenant_id>/delete", methods=["POST"])
+@app.route("/admin/tenant/<tenant_id>/delete", methods=["POST"])
 @admin_required
 def admin_delete_tenant(tenant_id):
     """
@@ -957,10 +967,9 @@ def admin_delete_tenant(tenant_id):
     pembayaran di Midtrans tidak ikut terhapus — pengembalian dana, bila perlu,
     tetap dilakukan lewat dasbor Midtrans.
     """
-    tenant = Tenant.query.get_or_404(tenant_id)
+    tenant = get_or_404(Tenant, tenant_id)
     order_id = tenant.order_id
-    db.session.delete(tenant)
-    db.session.commit()
+    tenant.delete()
     flash(f"Pendaftaran {order_id} telah dihapus.", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -971,9 +980,7 @@ def file_too_large(e):
     return redirect(url_for("admin_dashboard"))
 
 
-with app.app_context():
-    db.create_all()
-    seed_defaults()
+seed_defaults()
 
 
 if __name__ == "__main__":

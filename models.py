@@ -1,29 +1,25 @@
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
 import secrets
+from datetime import datetime
 
-db = SQLAlchemy()
+import mongoengine as me
 
 
-class BoothType(db.Model):
+class BoothType(me.Document):
     """Jenis booth pameran — harga dan kuota diatur lewat panel admin."""
-    __tablename__ = "booth_types"
+    meta = {"collection": "booth_types"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, default="")
-    price = db.Column(db.Integer, nullable=False)  # dalam Rupiah, tanpa desimal
-    quota = db.Column(db.Integer, nullable=False, default=0)
-    is_active = db.Column(db.Boolean, default=True)
-    sort_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    tenants = db.relationship("Tenant", backref="booth_type", lazy=True)
+    name = me.StringField(max_length=100, required=True)
+    description = me.StringField(default="")
+    price = me.IntField(required=True)  # dalam Rupiah, tanpa desimal
+    quota = me.IntField(required=True, default=0)
+    is_active = me.BooleanField(default=True)
+    sort_order = me.IntField(default=0)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     @property
     def slots_taken(self):
         """Jumlah booth yang sudah terisi oleh pendaftaran yang settlement/capture."""
-        return sum(1 for t in self.tenants if t.payment_status == "paid")
+        return Tenant.objects(booth_type=self, payment_status="paid").count()
 
     @property
     def slots_remaining(self):
@@ -31,7 +27,7 @@ class BoothType(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "description": self.description,
             "price": self.price,
@@ -43,21 +39,20 @@ class BoothType(db.Model):
         }
 
 
-class AddOn(db.Model):
+class AddOn(me.Document):
     """Opsi tambahan saat pendaftaran (mis. dinner, cetak poster) — dikelola lewat panel admin."""
-    __tablename__ = "add_ons"
+    meta = {"collection": "add_ons"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    description = db.Column(db.Text, default="")
-    price = db.Column(db.Integer, nullable=False, default=0)  # dalam Rupiah, tanpa desimal
-    is_active = db.Column(db.Boolean, default=True)
-    sort_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    name = me.StringField(max_length=120, required=True)
+    description = me.StringField(default="")
+    price = me.IntField(required=True, default=0)  # dalam Rupiah, tanpa desimal
+    is_active = me.BooleanField(default=True)
+    sort_order = me.IntField(default=0)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "description": self.description,
             "price": self.price,
@@ -65,46 +60,64 @@ class AddOn(db.Model):
         }
 
 
-class Tenant(db.Model):
+class SelectedAddOn(me.EmbeddedDocument):
+    """Satu opsi tambahan yang dipilih pendaftar, dengan nama & harga snapshot saat mendaftar."""
+    add_on = me.ReferenceField(AddOn)
+    name = me.StringField(required=True)
+    price = me.IntField(required=True)  # snapshot harga saat daftar
+
+
+class Tenant(me.Document):
     """Pendaftar / peserta pameran."""
-    __tablename__ = "tenants"
+    meta = {
+        "collection": "tenants",
+        "indexes": [
+            "midtrans_order_id",
+            {"fields": ["checkin_token"], "unique": True, "sparse": True},
+        ],
+    }
 
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    order_id = me.StringField(max_length=64, required=True, unique=True)
 
-    institution_name = db.Column(db.String(200), nullable=False)
-    pic_name = db.Column(db.String(150), nullable=False)
-    email = db.Column(db.String(150), nullable=False)
-    phone = db.Column(db.String(30), nullable=False)
+    institution_name = me.StringField(max_length=200, required=True)
+    pic_name = me.StringField(max_length=150, required=True)
+    email = me.StringField(max_length=150, required=True)
+    phone = me.StringField(max_length=30, required=True)
 
-    booth_type_id = db.Column(db.Integer, db.ForeignKey("booth_types.id"), nullable=False)
-    price_at_registration = db.Column(db.Integer, nullable=False)  # snapshot harga saat daftar
+    booth_type = me.ReferenceField(BoothType, required=True)
+    price_at_registration = me.IntField(required=True)  # snapshot harga saat daftar
 
     # Keterangan dari pendaftar: karya/produk yang akan ditampilkan di booth
-    description = db.Column(db.Text, default="")
+    description = me.StringField(default="")
 
-    payment_status = db.Column(db.String(30), default="pending")
+    payment_status = me.StringField(max_length=30, default="pending")
     # pending | paid | expired | cancelled | failed | refunded
-    midtrans_transaction_id = db.Column(db.String(100))
-    payment_type = db.Column(db.String(50))  # bank_transfer, qris, gopay, dll
-    paid_at = db.Column(db.DateTime)
+    midtrans_transaction_id = me.StringField(max_length=100)
+    payment_type = me.StringField(max_length=50)  # bank_transfer, qris, gopay, dll
+    paid_at = me.DateTimeField()
 
     # Token Snap disimpan agar pembayaran yang belum selesai bisa dibuka lagi
-    snap_token = db.Column(db.String(120), default="")
+    snap_token = me.StringField(max_length=120, default="")
 
-    # order_id yang sedang dipakai di Midtrans. Berbeda dari kolom order_id
+    # order_id yang sedang dipakai di Midtrans. Berbeda dari field order_id
     # di atas, yang menjadi alamat tetap halaman status milik pendaftar.
     # Midtrans menolak order_id yang sama dipakai ulang, jadi saat pembayaran
     # diulang nilainya berganti — tanpa mengubah tautan yang sudah disalin.
-    midtrans_order_id = db.Column(db.String(64), index=True)
+    midtrans_order_id = me.StringField(max_length=64)
 
     # Tiket masuk: token acak yang tidak bisa ditebak, dipakai sebagai isi QR.
     # Berbeda dari order_id yang tampil di URL dan email.
-    checkin_token = db.Column(db.String(64), unique=True, index=True)
-    checked_in_at = db.Column(db.DateTime)
+    checkin_token = me.StringField(max_length=64)
+    checked_in_at = me.DateTimeField()
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    selected_add_ons = me.EmbeddedDocumentListField(SelectedAddOn, default=list)
+
+    created_at = me.DateTimeField(default=datetime.utcnow)
+    updated_at = me.DateTimeField(default=datetime.utcnow)
+
+    def save(self, *args, **kwargs):
+        self.updated_at = datetime.utcnow()
+        return super().save(*args, **kwargs)
 
     @staticmethod
     def generate_checkin_token():
@@ -137,7 +150,7 @@ class Tenant(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "order_id": self.order_id,
             "institution_name": self.institution_name,
             "pic_name": self.pic_name,
@@ -146,7 +159,7 @@ class Tenant(db.Model):
             "booth_type": self.booth_type.name if self.booth_type else None,
             "description": self.description,
             "price_at_registration": self.price_at_registration,
-            "add_ons": [{"name": a.add_on.name, "price": a.price} for a in self.selected_add_ons],
+            "add_ons": [{"name": a.name, "price": a.price} for a in self.selected_add_ons],
             "total_amount": self.total_amount,
             "payment_status": self.payment_status,
             "payment_type": self.payment_type,
@@ -155,59 +168,48 @@ class Tenant(db.Model):
         }
 
 
-class TenantAddOn(db.Model):
-    """Opsi tambahan yang dipilih satu pendaftar, dengan harga snapshot saat mendaftar."""
-    __tablename__ = "tenant_add_ons"
+class AdminUser(me.Document):
+    meta = {"collection": "admin_users"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=False)
-    add_on_id = db.Column(db.Integer, db.ForeignKey("add_ons.id"), nullable=False)
-    price = db.Column(db.Integer, nullable=False)  # snapshot harga saat daftar
-
-    tenant = db.relationship("Tenant", backref=db.backref("selected_add_ons", lazy=True))
-    add_on = db.relationship("AddOn")
+    username = me.StringField(max_length=80, required=True, unique=True)
+    password_hash = me.StringField(max_length=255, required=True)
 
 
-class AdminUser(db.Model):
-    __tablename__ = "admin_users"
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-
-
-class EventInfo(db.Model):
+class EventInfo(me.Document):
     """Informasi acara (lokasi, tanggal, peta) — baris tunggal, diatur lewat panel admin."""
-    __tablename__ = "event_info"
+    meta = {"collection": "event_info"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    venue_name = db.Column(db.String(200), default="")
-    address = db.Column(db.Text, default="")
-    event_date = db.Column(db.String(120), default="")
-    maps_url = db.Column(db.String(500), default="")
+    venue_name = me.StringField(max_length=200, default="")
+    address = me.StringField(default="")
+    event_date = me.StringField(max_length=120, default="")
+    maps_url = me.StringField(max_length=500, default="")
 
     # Bagian sambutan (hero) di halaman depan
-    hero_eyebrow = db.Column(db.String(80), default="SATRIA 2026 · Exhibition")
-    hero_title_before = db.Column(db.String(120), default="Pamerkan")
-    hero_title_accent = db.Column(db.String(120), default="karya terbaik")
-    hero_title_after = db.Column(db.String(120), default="mu disini")
-    hero_lead = db.Column(db.Text,
-                          default="Daftarkan booth untuk menampilkan karya, riset, dan inovasi "
-                                  "Anda di hadapan pengunjung SATRIA 2026. Slot terbatas sesuai "
-                                  "kuota masing-masing jenis booth.")
-    hero_note = db.Column(db.String(200), default="PT Nusa Inspira Teknologi")
-    hero_note_prefix = db.Column(db.String(80), default="In collaboration with")
+    hero_eyebrow = me.StringField(max_length=80, default="SATRIA 2026 · Exhibition")
+    hero_title_before = me.StringField(max_length=120, default="Pamerkan")
+    hero_title_accent = me.StringField(max_length=120, default="karya terbaik")
+    hero_title_after = me.StringField(max_length=120, default="mu disini")
+    hero_lead = me.StringField(
+        default="Daftarkan booth untuk menampilkan karya, riset, dan inovasi "
+                "Anda di hadapan pengunjung SATRIA 2026. Slot terbatas sesuai "
+                "kuota masing-masing jenis booth.")
+    hero_note = me.StringField(max_length=200, default="PT Nusa Inspira Teknologi")
+    hero_note_prefix = me.StringField(max_length=80, default="In collaboration with")
 
     # Judul bagian pembicara di halaman depan
-    speakers_eyebrow = db.Column(db.String(60), default="Narasumber")
-    speakers_title = db.Column(db.String(150), default="Pembicara acara")
-    speakers_subtitle = db.Column(db.String(300),
-                                  default="Menghadirkan praktisi dan akademisi di bidangnya.")
+    speakers_eyebrow = me.StringField(max_length=60, default="Narasumber")
+    speakers_title = me.StringField(max_length=150, default="Pembicara acara")
+    speakers_subtitle = me.StringField(
+        max_length=300, default="Menghadirkan praktisi dan akademisi di bidangnya.")
 
     # Catatan/ketentuan acara — satu baris satu poin, tampil sebagai daftar di halaman depan.
-    event_notes = db.Column(db.Text, default="")
+    event_notes = me.StringField(default="")
 
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = me.DateTimeField(default=datetime.utcnow)
+
+    def save(self, *args, **kwargs):
+        self.updated_at = datetime.utcnow()
+        return super().save(*args, **kwargs)
 
     @property
     def has_content(self):
@@ -220,29 +222,27 @@ class EventInfo(db.Model):
     @staticmethod
     def get_or_create():
         """Selalu kembalikan satu baris EventInfo; buat jika belum ada."""
-        info = EventInfo.query.first()
+        info = EventInfo.objects.first()
         if info is None:
             info = EventInfo()
-            db.session.add(info)
-            db.session.commit()
+            info.save()
         return info
 
 
-class GalleryPhoto(db.Model):
+class GalleryPhoto(me.Document):
     """Foto carousel di halaman depan — diunggah dan diurutkan lewat panel admin."""
-    __tablename__ = "gallery_photos"
+    meta = {"collection": "gallery_photos"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(255), nullable=False)
-    caption = db.Column(db.String(200), default="")
-    sort_order = db.Column(db.Integer, default=0)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    filename = me.StringField(max_length=255, required=True)
+    caption = me.StringField(max_length=200, default="")
+    sort_order = me.IntField(default=0)
+    is_active = me.BooleanField(default=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     # Pengaturan tampilan — gambar asli tidak diubah, hanya cara menampilkannya.
-    fit_mode = db.Column(db.String(10), default="contain")   # contain | cover
-    pos_x = db.Column(db.Integer, default=50)                # 0-100, kiri ke kanan
-    pos_y = db.Column(db.Integer, default=50)                # 0-100, atas ke bawah
+    fit_mode = me.StringField(max_length=10, default="contain")   # contain | cover
+    pos_x = me.IntField(default=50)                # 0-100, kiri ke kanan
+    pos_y = me.IntField(default=50)                # 0-100, atas ke bawah
 
     @property
     def object_position(self):
@@ -252,18 +252,17 @@ class GalleryPhoto(db.Model):
         return f"{x}% {y}%"
 
 
-class Broadcast(db.Model):
+class Broadcast(me.Document):
     """Riwayat pengiriman email massal dari panel admin."""
-    __tablename__ = "broadcasts"
+    meta = {"collection": "broadcasts"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    subject = db.Column(db.String(200), nullable=False)
-    body = db.Column(db.Text, nullable=False)
-    audience = db.Column(db.String(30), nullable=False)  # all | paid | pending
-    total_recipients = db.Column(db.Integer, default=0)
-    total_sent = db.Column(db.Integer, default=0)
-    total_failed = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    subject = me.StringField(max_length=200, required=True)
+    body = me.StringField(required=True)
+    audience = me.StringField(max_length=30, required=True)  # all | paid | pending
+    total_recipients = me.IntField(default=0)
+    total_sent = me.IntField(default=0)
+    total_failed = me.IntField(default=0)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     AUDIENCE_LABELS = {
         "all": "Semua pendaftar",
@@ -277,23 +276,22 @@ class Broadcast(db.Model):
         return self.AUDIENCE_LABELS.get(self.audience, self.audience)
 
 
-class Speaker(db.Model):
+class Speaker(me.Document):
     """Pembicara acara — ditampilkan di halaman depan, diatur lewat panel admin."""
-    __tablename__ = "speakers"
+    meta = {"collection": "speakers"}
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    institution = db.Column(db.String(200), default="")
-    topic = db.Column(db.String(300), default="")
-    photo = db.Column(db.String(255), default="")   # nama berkas di static/uploads
-    sort_order = db.Column(db.Integer, default=0)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    name = me.StringField(max_length=150, required=True)
+    institution = me.StringField(max_length=200, default="")
+    topic = me.StringField(max_length=300, default="")
+    photo = me.StringField(max_length=255, default="")   # nama berkas di static/uploads
+    sort_order = me.IntField(default=0)
+    is_active = me.BooleanField(default=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
 
     # Bagian foto yang tampil di bingkai bulat (0-100). Foto selalu dipotong,
     # jadi cukup posisi — tidak perlu pilihan contain/cover seperti carousel.
-    pos_x = db.Column(db.Integer, default=50)
-    pos_y = db.Column(db.Integer, default=50)
+    pos_x = me.IntField(default=50)
+    pos_y = me.IntField(default=50)
 
     @property
     def object_position(self):

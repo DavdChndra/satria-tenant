@@ -8,7 +8,8 @@ plus panel admin untuk memantau pendaftaran dan mengatur harga/kuota booth.
 ```
 satria-tenant/
 ├── app.py                  # routing utama (publik + admin)
-├── models.py                # model database (BoothType, Tenant, AdminUser)
+├── models.py                # model MongoDB/MongoEngine (BoothType, Tenant, AdminUser)
+├── migrate_to_mongo.py       # migrasi data satu kali dari satria.db (SQLite lama) ke MongoDB
 ├── midtrans_service.py      # wrapper Midtrans Snap + verifikasi webhook
 ├── templates/
 │   ├── base.html
@@ -31,13 +32,21 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env, isi MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY dari dashboard Midtrans
+# edit .env, isi MONGODB_URI (MongoDB Atlas), MIDTRANS_SERVER_KEY, dan MIDTRANS_CLIENT_KEY
 
 python app.py
 # buka http://localhost:5000
 ```
 
-Database SQLite (`satria.db`) otomatis dibuat saat pertama kali dijalankan, lengkap
+### Koneksi MongoDB Atlas
+
+1. Buat cluster gratis di [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Di **Network Access**, izinkan IP komputer/server Anda (atau `0.0.0.0/0` untuk testing)
+3. Di **Database Access**, buat database user beserta passwordnya
+4. Di **Database > Connect > Drivers**, salin connection string-nya ke `MONGODB_URI` di `.env`
+   (bentuknya `mongodb+srv://user:password@cluster.mongodb.net/satria?retryWrites=true&w=majority`)
+
+Koleksi MongoDB otomatis dibuat saat pertama kali dijalankan, lengkap
 dengan 2 jenis booth contoh dan 1 akun admin default:
 
 - **Username:** `admin`
@@ -47,15 +56,27 @@ dengan 2 jenis booth contoh dan 1 akun admin default:
 
 ```bash
 python -c "
-from app import app
-from models import db, AdminUser
+import app
+from models import AdminUser
 from werkzeug.security import generate_password_hash
-with app.app_context():
-    u = AdminUser.query.filter_by(username='admin').first()
-    u.password_hash = generate_password_hash('password-baru-yang-kuat')
-    db.session.commit()
+u = AdminUser.objects(username='admin').first()
+u.password_hash = generate_password_hash('password-baru-yang-kuat')
+u.save()
 "
 ```
+
+### Migrasi data lama dari SQLite
+
+Jika sebelumnya pernah memakai versi SQLite (`satria.db`) aplikasi ini, jalankan
+sekali setelah `MONGODB_URI` terisi dan bisa dikoneksi:
+
+```bash
+python migrate_to_mongo.py
+```
+
+Script ini membaca `satria.db` dan menyalin seluruh data (pendaftar, jenis booth,
+opsi tambahan, dll) ke MongoDB. Aman dijalankan di database Mongo yang masih kosong;
+jangan dijalankan dua kali pada database yang sama supaya data tidak dobel.
 
 ## Kredensial Midtrans
 
@@ -122,6 +143,7 @@ ngrok http 5000
 - Harga yang dibayar tenant adalah snapshot (`price_at_registration`) saat pendaftaran
   dibuat — jika admin mengubah harga booth setelahnya, pendaftaran yang sudah ada
   tidak terpengaruh.
-- File `satria.db` (SQLite) cukup untuk skala kecil-menengah. Jika pendaftaran
-  bervolume tinggi atau butuh akses konkuren berat, pertimbangkan migrasi ke
-  PostgreSQL (tinggal ganti `SQLALCHEMY_DATABASE_URI`).
+- Database memakai MongoDB (Atlas), diakses lewat ODM MongoEngine. Berkas
+  `satria.db` (SQLite) yang lama sudah tidak dipakai aplikasi — disimpan hanya
+  sebagai sumber data untuk `migrate_to_mongo.py`, aman dihapus setelah migrasi
+  dipastikan berhasil.

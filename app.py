@@ -352,6 +352,14 @@ def api_resume_payment(order_id):
     return jsonify({"snap_token": tenant.snap_token, "order_id": tenant.order_id})
 
 
+@app.route("/api/payment/<order_id>/confirm", methods=["POST"])
+def api_confirm_payment(order_id):
+    """Segarkan status pembayaran setelah Snap melaporkan pembayaran sukses."""
+    tenant = get_by_field_or_404(Tenant, order_id=order_id)
+    refresh_pending_tenant_status(tenant)
+    return jsonify({"paid": tenant.payment_status == "paid"})
+
+
 @app.route("/ticket/<order_id>/qr.svg")
 def ticket_qr(order_id):
     """Gambar QR tiket masuk. Isinya token acak, bukan nomor pendaftaran."""

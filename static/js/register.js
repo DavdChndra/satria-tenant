@@ -118,8 +118,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       window.snap.pay(data.snap_token, {
-        onSuccess: function () {
-          window.location.href = "/ticket/" + data.order_id;
+        onSuccess: async function () {
+          await goToTicketWhenPaid(data.order_id);
         },
         onPending: function () {
           window.location.href = "/status/" + data.order_id;
@@ -137,4 +137,22 @@ document.addEventListener("DOMContentLoaded", function () {
       setLoading(false);
     }
   });
+
+  async function goToTicketWhenPaid(orderId) {
+    const ticketUrl = "/ticket/" + orderId;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        const res = await fetch("/api/payment/" + orderId + "/confirm", { method: "POST" });
+        const data = await res.json();
+        if (res.ok && data.paid) {
+          window.location.href = ticketUrl;
+          return;
+        }
+      } catch (err) {
+        // Continue retrying while the Midtrans notification is being processed.
+      }
+      await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+    }
+    window.location.href = "/status/" + orderId;
+  }
 });

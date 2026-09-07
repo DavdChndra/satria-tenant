@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const ticketTarget = "/ticket/" + data.order_id;
 
       window.snap.pay(data.snap_token, {
-        onSuccess: function () { window.location.href = ticketTarget; },
+        onSuccess: async function () { await goToTicketWhenPaid(data.order_id, ticketTarget); },
         onPending: function () { window.location.href = target; },
         onError: function () {
           showError("Pembayaran gagal diproses. Silakan coba lagi.");
@@ -79,4 +79,21 @@ document.addEventListener("DOMContentLoaded", function () {
       payBtn.textContent = "Lanjutkan pembayaran";
     }
   });
+
+  async function goToTicketWhenPaid(orderId, ticketUrl) {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        const res = await fetch("/api/payment/" + orderId + "/confirm", { method: "POST" });
+        const data = await res.json();
+        if (res.ok && data.paid) {
+          window.location.href = ticketUrl;
+          return;
+        }
+      } catch (err) {
+        // Continue retrying while the Midtrans notification is being processed.
+      }
+      await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+    }
+    window.location.href = target;
+  }
 });

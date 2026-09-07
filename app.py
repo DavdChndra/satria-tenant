@@ -1005,11 +1005,11 @@ def admin_update_tenant_status(tenant_id):
     tenant.save()
     flash(f"Status pendaftaran {tenant.order_id} diperbarui menjadi '{new_status}'.", "success")
 
-        # Pembayaran offline/khusus yang di-acc manual juga dikirimi bukti lunas.
-        if new_status == "paid" and not was_paid:
-            if send_payment_success(tenant, url_for("registration_status",
-                                                    order_id=tenant.order_id, _external=True)):
-                flash(f"Email bukti lunas dikirim ke {tenant.email}.", "success")
+    # Pembayaran offline/khusus yang di-acc manual juga dikirimi bukti lunas.
+    if new_status == "paid" and not was_paid:
+        if send_payment_success(tenant, url_for("registration_status",
+                                                order_id=tenant.order_id, _external=True)):
+            flash(f"Email bukti lunas dikirim ke {tenant.email}.", "success")
     return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
 
 

@@ -1,6 +1,7 @@
 import csv
 import io
 import os
+import re
 import secrets
 from functools import wraps
 from datetime import datetime
@@ -93,6 +94,23 @@ def valid_object_ids(id_list):
     return result
 
 
+def form_text(name, default=""):
+    value = request.form.get(name, default)
+    return value.strip() if isinstance(value, str) else default
+
+
+def nonnegative_int(value, default=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed >= 0 else default
+
+
+def valid_email(value):
+    return bool(re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value))
+
+
 def next_sort_order(model):
     last = model.objects.order_by("-sort_order").first()
     return (last.sort_order if last else 0) + 1
@@ -171,34 +189,62 @@ def index():
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Payload pendaftaran tidak valid."}), 400
 
     required = ["institution_name", "pic_name", "email", "phone", "booth_type_id"]
-    missing = [f for f in required if not str(data.get(f, "")).strip()]
+    values = {f: data.get(f, "") for f in required}
+    missing = [f for f in required if not isinstance(values[f], str) or not values[f].strip()]
     if missing:
         return jsonify({"error": f"Field wajib belum diisi: {', '.join(missing)}"}), 400
 
-    booth = get_or_none(BoothType, data["booth_type_id"])
+    institution_name = values["institution_name"].strip()
+    pic_name = values["pic_name"].strip()
+    email = values["email"].strip()
+    phone = values["phone"].strip()
+    booth_type_id = values["booth_type_id"].strip()
+    if len(institution_name) > 200 or len(pic_name) > 150 or len(email) > 150 or len(phone) > 30:
+        return jsonify({"error": "Data pendaftaran melebihi batas panjang yang diizinkan."}), 400
+    if not valid_email(email):
+        return jsonify({"error": "Format email tidak valid."}), 400
+
+    booth = get_or_none(BoothType, booth_type_id)
     if not booth or not booth.is_active:
         return jsonify({"error": "Jenis booth tidak ditemukan atau tidak aktif."}), 400
     if booth.slots_remaining <= 0:
         return jsonify({"error": "Kuota booth ini sudah penuh."}), 400
 
-    requested_addon_ids = valid_object_ids(data.get("add_on_ids") or [])
+    requested_addon_ids = data.get("add_on_ids") or []
+    if not isinstance(requested_addon_ids, list):
+        return jsonify({"error": "Pilihan opsi tambahan tidak valid."}), 400
+    valid_addon_ids = valid_object_ids(requested_addon_ids)
+    if (len(valid_addon_ids) != len(requested_addon_ids)
+            or len(set(valid_addon_ids)) != len(requested_addon_ids)):
+        return jsonify({"error": "Pilihan opsi tambahan tidak valid."}), 400
+    requested_addon_ids = valid_addon_ids
     selected_add_ons = []
     if requested_addon_ids:
         selected_add_ons = list(AddOn.objects(id__in=requested_addon_ids, is_active=True))
+        if len(selected_add_ons) != len(set(requested_addon_ids)):
+            return jsonify({"error": "Ada opsi tambahan yang tidak tersedia."}), 400
+
+    description = data.get("description", "")
+    if not isinstance(description, str):
+        return jsonify({"error": "Deskripsi tidak valid."}), 400
+    if len(description.strip()) > 2000:
+        return jsonify({"error": "Deskripsi terlalu panjang."}), 400
 
     order_id = Tenant.generate_order_id()
     tenant = Tenant(
         order_id=order_id,
-        institution_name=data["institution_name"].strip(),
-        pic_name=data["pic_name"].strip(),
-        email=data["email"].strip(),
-        phone=data["phone"].strip(),
+        institution_name=institution_name,
+        pic_name=pic_name,
+        email=email,
+        phone=phone,
         booth_type=booth,
         price_at_registration=booth.price,
-        description=str(data.get("description", "")).strip(),
+        description=description.strip(),
         payment_status="pending",
         selected_add_ons=[SelectedAddOn(add_on=a, name=a.name, price=a.price) for a in selected_add_ons],
     )
@@ -382,7 +428,7 @@ def midtrans_webhook():
     fraud_status = payload.get("fraud_status")
     payment_type = payload.get("payment_type")
 
-    if not all([order_id, status_code, gross_amount, signature_key]):
+    if not all([order_id, status_code, gross_amount, signature_key, transaction_status]):
         return jsonify({"error": "Payload tidak lengkap"}), 400
 
     if not verify_notification_signature(order_id, status_code, gross_amount, signature_key):
@@ -578,14 +624,19 @@ def admin_scan_reset(tenant_id):
 @admin_required
 def admin_update_booth(booth_id):
     booth = get_or_404(BoothType, booth_id)
-    booth.name = request.form.get("name", booth.name).strip()
-    booth.description = request.form.get("description", booth.description)
-    try:
-        booth.price = int(request.form.get("price", booth.price))
-        booth.quota = int(request.form.get("quota", booth.quota))
-    except ValueError:
+    name = form_text("name", booth.name)
+    price = nonnegative_int(request.form.get("price", booth.price))
+    quota = nonnegative_int(request.form.get("quota", booth.quota))
+    if not name:
+        flash("Nama jenis booth wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if price is None or quota is None:
         flash("Harga dan kuota harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard"))
+    booth.name = name
+    booth.description = form_text("description", booth.description)
+    booth.price = price
+    booth.quota = quota
     booth.is_active = request.form.get("is_active") == "on"
     booth.save()
     flash(f"Pengaturan '{booth.name}' berhasil disimpan.", "success")
@@ -595,19 +646,18 @@ def admin_update_booth(booth_id):
 @app.route("/admin/booth/new", methods=["POST"])
 @admin_required
 def admin_new_booth():
-    try:
-        price = int(request.form.get("price", 0))
-        quota = int(request.form.get("quota", 0))
-    except ValueError:
+    price = nonnegative_int(request.form.get("price"))
+    quota = nonnegative_int(request.form.get("quota"))
+    if price is None or quota is None:
         flash("Harga dan kuota harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard"))
-    name = request.form.get("name", "").strip()
+    name = form_text("name")
     if not name:
         flash("Nama jenis booth wajib diisi.", "error")
         return redirect(url_for("admin_dashboard"))
     BoothType(
         name=name,
-        description=request.form.get("description", ""),
+        description=form_text("description"),
         price=price,
         quota=quota,
         sort_order=next_sort_order(BoothType),
@@ -621,17 +671,17 @@ def admin_new_booth():
 def admin_update_addon(addon_id):
     """Ubah nama, deskripsi, harga, atau status aktif satu opsi tambahan."""
     addon = get_or_404(AddOn, addon_id)
-    name = request.form.get("name", "").strip()
+    name = form_text("name")
     if not name:
         flash("Nama opsi tambahan wajib diisi.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
-    try:
-        addon.price = int(request.form.get("price", addon.price))
-    except ValueError:
+    price = nonnegative_int(request.form.get("price", addon.price))
+    if price is None:
         flash("Harga harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
     addon.name = name
-    addon.description = request.form.get("description", "").strip()
+    addon.description = form_text("description")
+    addon.price = price
     addon.is_active = request.form.get("is_active") == "on"
     addon.save()
     flash(f"Opsi tambahan '{addon.name}' berhasil disimpan.", "success")
@@ -642,18 +692,17 @@ def admin_update_addon(addon_id):
 @admin_required
 def admin_new_addon():
     """Tambah opsi tambahan baru (mis. dinner, cetak poster)."""
-    name = request.form.get("name", "").strip()
+    name = form_text("name")
     if not name:
         flash("Nama opsi tambahan wajib diisi.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
-    try:
-        price = int(request.form.get("price", 0))
-    except ValueError:
+    price = nonnegative_int(request.form.get("price"))
+    if price is None:
         flash("Harga harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
     AddOn(
         name=name,
-        description=request.form.get("description", "").strip(),
+        description=form_text("description"),
         price=price,
         sort_order=next_sort_order(AddOn),
     ).save()
@@ -752,12 +801,12 @@ def admin_upload_photo():
 def admin_update_photo(photo_id):
     """Ubah keterangan, urutan, atau status tampil satu foto."""
     photo = get_or_404(GalleryPhoto, photo_id)
-    photo.caption = request.form.get("caption", "").strip()
-    try:
-        photo.sort_order = int(request.form.get("sort_order", photo.sort_order))
-    except ValueError:
+    sort_order = nonnegative_int(request.form.get("sort_order", photo.sort_order))
+    if sort_order is None:
         flash("Urutan harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard"))
+    photo.caption = form_text("caption")
+    photo.sort_order = sort_order
     photo.is_active = request.form.get("is_active") == "on"
 
     fit = request.form.get("fit_mode", photo.fit_mode)
@@ -855,7 +904,7 @@ def admin_send_broadcast():
 @admin_required
 def admin_new_speaker():
     """Tambah pembicara baru beserta fotonya."""
-    name = request.form.get("name", "").strip()
+    name = form_text("name")
     if not name:
         flash("Nama pembicara wajib diisi.", "error")
         return redirect(url_for("admin_dashboard"))
@@ -869,8 +918,8 @@ def admin_new_speaker():
 
     Speaker(
         name=name,
-        institution=request.form.get("institution", "").strip(),
-        topic=request.form.get("topic", "").strip(),
+        institution=form_text("institution"),
+        topic=form_text("topic"),
         photo=filename,
         sort_order=next_sort_order(Speaker),
     ).save()
@@ -883,14 +932,18 @@ def admin_new_speaker():
 def admin_update_speaker(speaker_id):
     """Perbarui data pembicara; foto lama diganti hanya bila ada unggahan baru."""
     speaker = get_or_404(Speaker, speaker_id)
-    speaker.name = request.form.get("name", speaker.name).strip()
-    speaker.institution = request.form.get("institution", "").strip()
-    speaker.topic = request.form.get("topic", "").strip()
-    try:
-        speaker.sort_order = int(request.form.get("sort_order", speaker.sort_order))
-    except ValueError:
+    name = form_text("name", speaker.name)
+    sort_order = nonnegative_int(request.form.get("sort_order", speaker.sort_order))
+    if not name:
+        flash("Nama pembicara wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard"))
+    if sort_order is None:
         flash("Urutan harus berupa angka.", "error")
         return redirect(url_for("admin_dashboard"))
+    speaker.name = name
+    speaker.institution = form_text("institution")
+    speaker.topic = form_text("topic")
+    speaker.sort_order = sort_order
     speaker.is_active = request.form.get("is_active") == "on"
 
     for field in ("pos_x", "pos_y"):
@@ -939,15 +992,18 @@ def admin_update_tenant_status(tenant_id):
         flash("Password salah. Status pembayaran tidak diubah.", "error")
         return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
 
-    if new_status in ("pending", "paid", "expired", "cancelled", "failed", "refunded"):
-        was_paid = tenant.payment_status == "paid"
-        tenant.payment_status = new_status
-        if new_status == "paid" and not tenant.paid_at:
-            tenant.paid_at = datetime.utcnow()
-        if new_status == "paid":
-            tenant.ensure_checkin_token()
-        tenant.save()
-        flash(f"Status pendaftaran {tenant.order_id} diperbarui menjadi '{new_status}'.", "success")
+    if new_status not in ("pending", "paid", "expired", "cancelled", "failed", "refunded"):
+        flash("Status pembayaran tidak valid.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
+
+    was_paid = tenant.payment_status == "paid"
+    tenant.payment_status = new_status
+    if new_status == "paid" and not tenant.paid_at:
+        tenant.paid_at = datetime.utcnow()
+    if new_status == "paid":
+        tenant.ensure_checkin_token()
+    tenant.save()
+    flash(f"Status pendaftaran {tenant.order_id} diperbarui menjadi '{new_status}'.", "success")
 
         # Pembayaran offline/khusus yang di-acc manual juga dikirimi bukti lunas.
         if new_status == "paid" and not was_paid:

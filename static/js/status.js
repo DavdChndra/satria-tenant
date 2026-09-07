@@ -61,7 +61,9 @@ document.addEventListener("DOMContentLoaded", function () {
       const ticketTarget = "/ticket/" + data.order_id;
 
       window.snap.pay(data.snap_token, {
-        onSuccess: async function () { await goToTicketWhenPaid(data.order_id, ticketTarget); },
+        onSuccess: async function () {
+          await goToTicketWhenPaid(data.order_id, ticketTarget, target);
+        },
         onPending: function () { window.location.href = target; },
         onError: function () {
           showError("Pembayaran gagal diproses. Silakan coba lagi.");
@@ -80,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  async function goToTicketWhenPaid(orderId, ticketUrl) {
+  async function goToTicketWhenPaid(orderId, ticketUrl, fallbackUrl) {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
         const res = await fetch("/api/payment/" + orderId + "/confirm", { method: "POST" });
@@ -94,6 +96,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       await new Promise(function (resolve) { setTimeout(resolve, 1000); });
     }
-    window.location.href = target;
+    window.location.href = fallbackUrl;
   }
 });

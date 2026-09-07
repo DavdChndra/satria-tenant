@@ -377,6 +377,7 @@ def ticket_qr(order_id):
 def ticket_preview(order_id):
     """Pratinjau ID card peserta — hanya untuk pendaftaran yang sudah lunas."""
     tenant = get_by_field_or_404(Tenant, order_id=order_id)
+    refresh_pending_tenant_status(tenant)
     if tenant.payment_status != "paid":
         flash("Kartu peserta terbit setelah pembayaran lunas.", "error")
         return redirect(url_for("registration_status", order_id=order_id))

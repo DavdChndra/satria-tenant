@@ -58,9 +58,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Nomor pendaftaran tetap; cukup muat ulang halaman yang sama
       const target = "/status/" + data.order_id;
+      const ticketTarget = "/ticket/" + data.order_id;
 
       window.snap.pay(data.snap_token, {
-        onSuccess: function () { window.location.href = target; },
+        onSuccess: function () { window.location.href = ticketTarget; },
         onPending: function () { window.location.href = target; },
         onError: function () {
           showError("Pembayaran gagal diproses. Silakan coba lagi.");

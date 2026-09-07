@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       window.snap.pay(data.snap_token, {
         onSuccess: function () {
-          window.location.href = "/status/" + data.order_id;
+          window.location.href = "/ticket/" + data.order_id;
         },
         onPending: function () {
           window.location.href = "/status/" + data.order_id;

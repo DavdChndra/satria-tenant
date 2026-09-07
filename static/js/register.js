@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
           setLoading(false);
         },
         onClose: function () {
-          setLoading(false);
+          window.location.href = "/status/" + data.order_id;
         },
       });
     } catch (err) {

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Admin - SATRIA 2026{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-header-inner">
+    <div class="brand">
+      <div class="brand-mark"><span>S</span></div>
+      SATRIA 2026 <span class="admin-tag">Admin</span>
+    </div>
+    <div class="admin-header-actions">
+      <a href="{{ url_for('index') }}" class="admin-header-link" target="_blank" rel="noopener">Lihat halaman depan</a>
+      <a href="{{ url_for('admin_logout') }}" class="btn-outline btn-sm">Keluar</a>
+    </div>
+  </div>
+</header>
+
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <nav>
+      <a href="{{ url_for('admin_dashboard') }}" class="admin-side-link {% if active_nav == 'ringkasan' %}is-active{% endif %}">Ringkasan</a>
+      <a href="{{ url_for('admin_hero') }}" class="admin-side-link {% if active_nav == 'hero' %}is-active{% endif %}">Sambutan</a>
+      <a href="{{ url_for('admin_lokasi') }}" class="admin-side-link {% if active_nav == 'lokasi' %}is-active{% endif %}">Lokasi</a>
+      <a href="{{ url_for('admin_summit') }}" class="admin-side-link {% if active_nav == 'summit' %}is-active{% endif %}">Konten summit</a>
+      <a href="{{ url_for('admin_foto') }}" class="admin-side-link {% if active_nav == 'foto' %}is-active{% endif %}">Foto</a>
+      <a href="{{ url_for('admin_pembicara') }}" class="admin-side-link {% if active_nav == 'pembicara' %}is-active{% endif %}">Pembicara</a>
+      <a href="{{ url_for('admin_booth') }}" class="admin-side-link {% if active_nav == 'booth' %}is-active{% endif %}">Booth</a>
+      <a href="{{ url_for('admin_tambahan') }}" class="admin-side-link {% if active_nav == 'tambahan' %}is-active{% endif %}">Tambahan</a>
+      <a href="{{ url_for('admin_email') }}" class="admin-side-link {% if active_nav == 'email' %}is-active{% endif %}">Kirim email</a>
+      <a href="{{ url_for('admin_pendaftaran') }}" class="admin-side-link {% if active_nav == 'pendaftaran' %}is-active{% endif %}">Pendaftaran</a>
+      <a href="{{ url_for('admin_akun') }}" class="admin-side-link {% if active_nav == 'akun' %}is-active{% endif %}">Akun</a>
+    </nav>
+    <div class="admin-sidebar-foot">
+      <a href="{{ url_for('admin_scan') }}" class="admin-side-link {% if active_nav == 'scan' %}is-active{% endif %}">Pindai QR</a>
+    </div>
+  </aside>
+
+  <main class="admin-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-list">{% for category, m in messages %}<div class="flash-msg flash-{{ category }}">{{ m }}</div>{% endfor %}</div>
+      {% endif %}
+    {% endwith %}
+    {% block admin_content %}{% endblock %}
+  </main>
+</div>
+
+<!-- Dialog konfirmasi -->
+<div class="confirm-overlay" id="confirm-modal" hidden>
+  <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <span class="confirm-icon" id="confirm-icon">!</span>
+    <h2 id="confirm-title">Konfirmasi</h2>
+    <p class="confirm-text" id="confirm-text"></p>
+    <div class="confirm-detail" id="confirm-detail" hidden></div>
+    <div class="field confirm-password-field" id="confirm-password-field" hidden>
+      <label for="confirm-password">Masukkan password Anda untuk konfirmasi</label>
+      <input type="password" id="confirm-password" autocomplete="current-password">
+      <span class="confirm-password-error" id="confirm-password-error" hidden>Password wajib diisi.</span>
+    </div>
+    <div class="confirm-actions">
+      <button type="button" class="btn-outline" id="confirm-cancel">Batal</button>
+      <button type="button" class="btn-primary" id="confirm-ok">Ya, lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/admin-idle.js') }}"></script>
+<script src="{{ url_for('static', filename='js/broadcast.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/confirm.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

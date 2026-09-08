@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}SATRIA 2026 — Pameran Tenant Telkom University{% endblock %}
+{% block title %}SATRIA 2026 - Pameran Tenant Telkom University{% endblock %}
 {% block content %}
 
 <section class="hero" id="top">
@@ -12,7 +12,7 @@
     <h1>{{ event_info.hero_title_before or "SATRIA" }} <span>{{ event_info.hero_title_accent or "2026" }}</span>{{ event_info.hero_title_after }}</h1>
     <p class="meta">{{ event_info.event_date or "12–13 Desember 2026" }}{% if event_info.venue_name %} &nbsp;|&nbsp; <b>{{ event_info.venue_name }}</b>{% endif %}</p>
     <div class="hero-actions">
-      <a class="btn-primary" href="#daftar">Daftar sebagai tenant</a>
+      <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sebagai tenant</a>
       <a class="btn-outline-light" href="#agenda">Lihat agenda</a>
     </div>
   </div>
@@ -23,8 +23,8 @@
     <a class="active" href="#top">Beranda</a>
     <a href="#agenda">Agenda</a>
     <a href="#booth">Paket Booth</a>
-    <a href="#alur">FAQ</a>
-    <a href="#daftar">Daftar</a>
+    <a href="#alasan">FAQ</a>
+    <a href="{{ url_for('registration_form') }}">Daftar</a>
   </div>
 </nav>
 
@@ -103,7 +103,7 @@
     <span class="eyebrow">Sesi pembuka</span>
     <h2>{{ keynote_section.title }}</h2>
     <p>{{ keynote_section.body }}</p>
-    <a class="btn-primary" href="#daftar">Daftar sekarang</a>
+    <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sekarang</a>
   </div>
 </section>
 {% endif %}
@@ -143,7 +143,7 @@
           <strong class="booth-price-big">Rp {{ "{:,}".format(booth.price).replace(',', '.') }}</strong>
           <p>{{ booth.description }}</p>
           <span class="booth-slots" style="margin:12px 0 auto;">{{ booth.slots_remaining }} slot tersisa dari {{ booth.quota }}</span>
-          <a class="btn-outline btn-block" href="#daftar" style="margin-top:16px;">Pilih booth</a>
+          <a class="btn-outline btn-block" href="{{ url_for('registration_form') }}?booth={{ booth.id }}" style="margin-top:16px;">Pilih booth</a>
         </div>
       </article>
       {% else %}
@@ -154,7 +154,7 @@
 </section>
 
 {% if reason_items %}
-<section>
+<section id="alasan">
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Kenapa perlu hadir</span>
@@ -177,94 +177,23 @@
   <div class="wrap">
     <div class="section-head"><h2>Langkah selanjutnya</h2></div>
     <div class="cta-grid">
-      <div class="cta-card"><h3>Daftar sebagai tenant</h3><a href="#daftar">Isi formulir pendaftaran →</a></div>
-      <div class="cta-card"><h3>Cek status pendaftaran</h3><a href="#daftar">Masukkan order ID kamu →</a></div>
-      <div class="cta-card"><h3>Punya pertanyaan?</h3><a href="#alur">Lihat alur pendaftaran →</a></div>
+      <div class="cta-card">
+        <h3>Daftar sebagai tenant</h3>
+        <a href="{{ url_for('registration_form') }}">Isi formulir pendaftaran →</a>
+      </div>
+      <div class="cta-card">
+        <h3>Cek status pendaftaran</h3>
+        <form id="status-lookup-form" class="status-lookup-form">
+          <input type="text" id="status-lookup-input" placeholder="Nomor pendaftaran (SATRIA26-...)" required>
+          <button type="submit">Cek status →</button>
+        </form>
+      </div>
+      <div class="cta-card"><h3>Punya pertanyaan?</h3><a href="#alasan">Lihat alasan bergabung →</a></div>
     </div>
-  </div>
-</section>
-
-<section class="reg-form-section" id="daftar">
-  <div class="wrap form-grid">
-    <form id="registration-form" class="reg-form" autocomplete="off">
-      <div class="section-head" style="margin-bottom:28px;">
-        <span class="eyebrow">Pendaftaran tenant</span>
-        <h2>Amankan booth-mu</h2>
-        <p>Lengkapi data berikut, lalu lanjutkan ke pembayaran.</p>
-      </div>
-      <div class="field"><label for="institution_name">Nama institusi / organisasi</label><input type="text" id="institution_name" name="institution_name" required></div>
-      <div class="field"><label for="pic_name">Nama penanggung jawab (PIC)</label><input type="text" id="pic_name" name="pic_name" required></div>
-      <div class="field-row">
-        <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
-        <div class="field"><label for="phone">Nomor HP / WhatsApp</label><input type="tel" id="phone" name="phone" required></div>
-      </div>
-      <div class="field">
-        <label>Jenis booth</label>
-        <div class="booth-options">
-          {% for booth in booth_types %}
-          <label class="booth-option {% if booth.slots_remaining <= 0 %}disabled{% endif %}">
-            <input type="radio" name="booth_type_id" value="{{ booth.id }}" {% if booth.slots_remaining <= 0 %}disabled{% endif %} required>
-            <div class="booth-option-body">
-              <div class="booth-option-head">
-                <span class="booth-name">{{ booth.name }}</span>
-                <span class="booth-price" data-price="{{ booth.price }}">Rp {{ "{:,}".format(booth.price).replace(',', '.') }}</span>
-              </div>
-              <p class="booth-desc">{{ booth.description }}</p>
-              <span class="booth-slots">{{ booth.slots_remaining }} slot tersisa dari {{ booth.quota }}</span>
-            </div>
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="field"><label for="description">Karya atau produk yang akan ditampilkan</label><textarea id="description" name="description" rows="4" maxlength="2000"></textarea></div>
-      {% if add_ons %}
-      <div class="field">
-        <label>Opsi tambahan</label>
-        <div class="addon-list">
-          {% for addon in add_ons %}
-          <div class="addon-row" data-addon-id="{{ addon.id }}" data-addon-price="{{ addon.price }}">
-            <div class="addon-row-info">
-              <span class="addon-row-name">{{ addon.name }}</span>
-              <span class="addon-row-desc">{{ addon.description }}</span>
-              <span class="addon-row-price">+Rp {{ "{:,}".format(addon.price).replace(',', '.') }}</span>
-            </div>
-            <button type="button" class="addon-toggle-btn" aria-pressed="false">Tidak diikutkan</button>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-      <div class="reg-total" id="reg-total" hidden>
-        <span>Total pembayaran</span>
-        <strong id="reg-total-value">Rp 0</strong>
-      </div>
-      <div id="form-error" class="form-error" style="display:none;"></div>
-      <button type="submit" id="submit-btn" class="btn-primary btn-block">Lanjutkan ke pembayaran</button>
-    </form>
-    <aside class="info-card" id="alur">
-      <h3>Alur pendaftaran</h3>
-      <ol>
-        <li>Isi data dan pilih paket booth.</li>
-        <li>Lanjutkan ke jendela pembayaran.</li>
-        <li>Bayar melalui transfer, kartu, QRIS, atau e-wallet.</li>
-        <li>Status diperbarui otomatis setelah pembayaran diterima.</li>
-      </ol>
-      {% if event_info.notes_list %}
-      <div class="info-notes">
-        <h4>Catatan acara</h4>
-        <ul>{% for note in event_info.notes_list %}<li>{{ note }}</li>{% endfor %}</ul>
-      </div>
-      {% endif %}
-    </aside>
   </div>
 </section>
 
 {% endblock %}
 {% block scripts %}
-{% if config.get('MIDTRANS_IS_PRODUCTION') %}
-<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
-{% else %}
-<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
-{% endif %}
-<script src="{{ url_for('static', filename='js/register.js') }}"></script>
+<script src="{{ url_for('static', filename='js/status-lookup.js') }}"></script>
 {% endblock %}

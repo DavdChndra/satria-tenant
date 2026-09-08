@@ -5,7 +5,7 @@ import mongoengine as me
 
 
 class BoothType(me.Document):
-    """Jenis booth pameran — harga dan kuota diatur lewat panel admin."""
+    """Jenis booth pameran - harga dan kuota diatur lewat panel admin."""
     meta = {"collection": "booth_types"}
 
     name = me.StringField(max_length=100, required=True)
@@ -40,7 +40,7 @@ class BoothType(me.Document):
 
 
 class AddOn(me.Document):
-    """Opsi tambahan saat pendaftaran (mis. dinner, cetak poster) — dikelola lewat panel admin."""
+    """Opsi tambahan saat pendaftaran (mis. dinner, cetak poster) - dikelola lewat panel admin."""
     meta = {"collection": "add_ons"}
 
     name = me.StringField(max_length=120, required=True)
@@ -102,7 +102,7 @@ class Tenant(me.Document):
     # order_id yang sedang dipakai di Midtrans. Berbeda dari field order_id
     # di atas, yang menjadi alamat tetap halaman status milik pendaftar.
     # Midtrans menolak order_id yang sama dipakai ulang, jadi saat pembayaran
-    # diulang nilainya berganti — tanpa mengubah tautan yang sudah disalin.
+    # diulang nilainya berganti - tanpa mengubah tautan yang sudah disalin.
     midtrans_order_id = me.StringField(max_length=64)
 
     # Tiket masuk: token acak yang tidak bisa ditebak, dipakai sebagai isi QR.
@@ -121,7 +121,7 @@ class Tenant(me.Document):
 
     @staticmethod
     def generate_checkin_token():
-        """Token acak 32 karakter — tidak dapat ditebak dari nomor pendaftaran."""
+        """Token acak 32 karakter - tidak dapat ditebak dari nomor pendaftaran."""
         return secrets.token_urlsafe(24)
 
     def ensure_checkin_token(self):
@@ -176,7 +176,7 @@ class AdminUser(me.Document):
 
 
 class EventInfo(me.Document):
-    """Informasi acara (lokasi, tanggal, peta) — baris tunggal, diatur lewat panel admin."""
+    """Informasi acara (lokasi, tanggal, peta) - baris tunggal, diatur lewat panel admin."""
     meta = {"collection": "event_info"}
 
     venue_name = me.StringField(max_length=200, default="")
@@ -207,7 +207,7 @@ class EventInfo(me.Document):
     speakers_subtitle = me.StringField(
         max_length=300, default="Menghadirkan praktisi dan akademisi di bidangnya.")
 
-    # Catatan/ketentuan acara — satu baris satu poin, tampil sebagai daftar di halaman depan.
+    # Catatan/ketentuan acara - satu baris satu poin, tampil sebagai daftar di halaman depan.
     event_notes = me.StringField(default="")
 
     updated_at = me.DateTimeField(default=datetime.utcnow)
@@ -235,7 +235,7 @@ class EventInfo(me.Document):
 
 
 class GalleryPhoto(me.Document):
-    """Foto carousel di halaman depan — diunggah dan diurutkan lewat panel admin."""
+    """Foto carousel di halaman depan - diunggah dan diurutkan lewat panel admin."""
     meta = {"collection": "gallery_photos"}
 
     filename = me.StringField(max_length=255, required=True)
@@ -244,7 +244,7 @@ class GalleryPhoto(me.Document):
     is_active = me.BooleanField(default=True)
     created_at = me.DateTimeField(default=datetime.utcnow)
 
-    # Pengaturan tampilan — gambar asli tidak diubah, hanya cara menampilkannya.
+    # Pengaturan tampilan - gambar asli tidak diubah, hanya cara menampilkannya.
     fit_mode = me.StringField(max_length=10, default="contain")   # contain | cover
     pos_x = me.IntField(default=50)                # 0-100, kiri ke kanan
     pos_y = me.IntField(default=50)                # 0-100, atas ke bawah
@@ -282,7 +282,7 @@ class Broadcast(me.Document):
 
 
 class Speaker(me.Document):
-    """Pembicara acara — ditampilkan di halaman depan, diatur lewat panel admin."""
+    """Pembicara acara - ditampilkan di halaman depan, diatur lewat panel admin."""
     meta = {"collection": "speakers"}
 
     name = me.StringField(max_length=150, required=True)
@@ -294,7 +294,7 @@ class Speaker(me.Document):
     created_at = me.DateTimeField(default=datetime.utcnow)
 
     # Bagian foto yang tampil di bingkai bulat (0-100). Foto selalu dipotong,
-    # jadi cukup posisi — tidak perlu pilihan contain/cover seperti carousel.
+    # jadi cukup posisi - tidak perlu pilihan contain/cover seperti carousel.
     pos_x = me.IntField(default=50)
     pos_y = me.IntField(default=50)
 

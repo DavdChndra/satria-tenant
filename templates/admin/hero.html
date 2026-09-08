@@ -1,0 +1,56 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Sambutan - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Sambutan halaman depan</h2>
+  <p>Bagian paling atas halaman depan - label, judul besar, dan kalimat pembuka.</p>
+</div>
+
+<form class="hero-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+  <input type="hidden" name="section" value="hero">
+  <div class="field">
+    <label>Label kecil</label>
+    <input type="text" name="hero_eyebrow" value="{{ event_info.hero_eyebrow or '' }}"
+           placeholder="mis. SATRIA 2026 &middot; Exhibition">
+  </div>
+
+  <div class="field">
+    <label>Judul besar</label>
+    <div class="hero-title-row">
+      <input type="text" name="hero_title_before" value="{{ event_info.hero_title_before or '' }}"
+             placeholder="Awal">
+      <input type="text" name="hero_title_accent" value="{{ event_info.hero_title_accent or '' }}"
+             placeholder="Bagian merah" class="input-accent">
+      <input type="text" name="hero_title_after" value="{{ event_info.hero_title_after or '' }}"
+             placeholder="Akhir">
+    </div>
+    <span class="field-hint">
+      Judul disusun dari tiga bagian. Bagian tengah tampil berwarna aksen.
+      Kosongkan bagian yang tidak dipakai.
+    </span>
+  </div>
+
+  <div class="field">
+    <label>Kalimat pembuka</label>
+    <textarea name="hero_lead" rows="3"
+              placeholder="Kalimat penjelas di bawah judul.">{{ event_info.hero_lead or '' }}</textarea>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label>Teks pengantar penyelenggara</label>
+      <input type="text" name="hero_note_prefix" value="{{ event_info.hero_note_prefix or '' }}"
+             placeholder="mis. In collaboration with">
+    </div>
+    <div class="field">
+      <label>Nama penyelenggara / mitra</label>
+      <input type="text" name="hero_note" value="{{ event_info.hero_note or '' }}"
+             placeholder="mis. PT Nusa Inspira Teknologi">
+    </div>
+  </div>
+
+  <button type="submit" class="btn-primary btn-sm">Simpan sambutan</button>
+</form>
+
+{% endblock %}

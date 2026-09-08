@@ -1,0 +1,83 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Pendaftaran - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head admin-panel-head-row">
+  <div>
+    <h2>Daftar pendaftaran</h2>
+    <p>Seluruh pendaftaran tenant beserta status pembayaran.</p>
+  </div>
+  <a href="{{ url_for('admin_export_tenants_csv') }}" class="btn-outline btn-sm">Ekspor CSV</a>
+</div>
+
+<div class="table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>No. pendaftaran</th>
+        <th>Institusi</th>
+        <th>PIC</th>
+        <th>Kontak</th>
+        <th>Booth</th>
+        <th>Opsi tambahan</th>
+        <th>Karya / produk</th>
+        <th>Total</th>
+        <th>Tanggal</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tenants %}
+      <tr>
+        <td class="mono">{{ t.order_id }}</td>
+        <td>{{ t.institution_name }}</td>
+        <td>{{ t.pic_name }}</td>
+        <td>
+          <div class="contact-cell">
+            <span>{{ t.email }}</span>
+            <span>{{ t.phone }}</span>
+          </div>
+        </td>
+        <td>{{ t.booth_type.name if t.booth_type else "-" }}</td>
+        <td class="desc-cell">
+          {% if t.selected_add_ons %}
+          <span title="{{ t.selected_add_ons|map(attribute='add_on.name')|join(', ') }}">
+            {{ t.selected_add_ons|map(attribute='add_on.name')|join(', ') }}
+          </span>
+          {% else %}<span class="desc-empty">-</span>{% endif %}
+        </td>
+        <td class="desc-cell">
+          {% if t.description %}<span title="{{ t.description }}">{{ t.description }}</span>
+          {% else %}<span class="desc-empty">-</span>{% endif %}
+        </td>
+        <td>Rp {{ "{:,}".format(t.total_amount).replace(",", ".") }}</td>
+        <td>{{ t.created_at.strftime("%d %b %Y %H:%M") }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_update_tenant_status', tenant_id=t.id) }}"
+                  class="status-form js-status-form"
+                  data-order="{{ t.order_id }}" data-current="{{ t.payment_status }}">
+            <input type="hidden" name="confirm_password">
+            <select name="payment_status" class="status-select status-{{ t.payment_status }}">
+              {% for s in ["pending", "paid", "expired", "cancelled", "failed", "refunded"] %}
+              <option value="{{ s }}" {% if t.payment_status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>
+            <form method="POST" action="{{ url_for('admin_delete_tenant', tenant_id=t.id) }}"
+                  class="js-delete-form"
+                  data-order="{{ t.order_id }}" data-inst="{{ t.institution_name }}">
+              <button type="submit" class="btn-icon-danger">Hapus</button>
+            </form>
+          </td>
+</tr>
+      {% else %}
+      <tr><td colspan="11" class="empty-row">Belum ada pendaftaran masuk.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

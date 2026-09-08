@@ -3,7 +3,7 @@
 ## SATRIA 2026 Tenant Registration
 
 **Dokumen:** Master Technical Specification  
-**Versi:** 1.0  
+**Versi:** 1.1  
 **Status:** As-is / baseline implementasi  
 **Tanggal:** 2026-09-08  
 **Bahasa aplikasi:** Bahasa Indonesia
@@ -14,12 +14,14 @@
 
 SATRIA Tenant adalah aplikasi web untuk pendaftaran tenant atau booth pameran. Sistem menyediakan:
 
-- halaman informasi acara dan formulir pendaftaran publik;
+- landing page acara (marketing/summit-style) terpisah dari formulir pendaftaran;
+- halaman formulir pendaftaran tenant tersendiri (`/daftar`);
 - perhitungan biaya booth dan opsi tambahan;
 - pembayaran online melalui Midtrans Snap;
 - sinkronisasi status pembayaran melalui webhook dan pengecekan Core API;
-- halaman status pendaftaran dan kartu peserta berbasis QR;
-- panel admin untuk pengelolaan konten, booth, add-on, pendaftar, email, dan check-in;
+- halaman status pendaftaran (dengan pencarian nomor pendaftaran) dan kartu peserta berbasis QR;
+- panel admin multi-halaman (sidebar navigation, bukan satu halaman scroll) untuk pengelolaan konten, booth, add-on, pendaftar, email, dan check-in;
+- sesi admin dengan auto-logout setelah 5 menit tanpa aktivitas;
 - ekspor data pendaftaran ke CSV;
 - migrasi satu kali dari SQLite lama ke MongoDB.
 
@@ -77,16 +79,22 @@ flowchart LR
 ### 2.3 Struktur source utama
 
 ```text
-app.py                 Routing, validasi, workflow, admin
-models.py              Dokumen MongoEngine dan business properties
-midtrans_service.py    Adapter Midtrans Snap/Core API
-email_service.py       Adapter SMTP dan template email
-migrate_to_mongo.py    Migrasi SQLite ke MongoDB
-templates/             Jinja2 pages
-static/js/              Interaksi browser
-static/css/             Styling
-static/uploads/         File gambar lokal runtime
-deploy/                Nginx dan systemd unit
+app.py                     Routing, validasi, workflow, admin
+models.py                  Dokumen MongoEngine dan business properties
+midtrans_service.py        Adapter Midtrans Snap/Core API
+email_service.py           Adapter SMTP dan template email
+migrate_to_mongo.py        Migrasi SQLite ke MongoDB
+templates/index.html       Landing page acara
+templates/register.html    Formulir pendaftaran tenant (/daftar)
+templates/status.html      Status pendaftaran
+templates/ticket.html      Kartu peserta
+templates/admin/_layout.html   Layout admin bersama (header + sidebar)
+templates/admin/*.html     Satu halaman per area admin (lihat 6.4)
+static/js/                 Interaksi browser
+static/css/                Styling
+static/img/                Aset statis (logo)
+static/uploads/            File gambar lokal runtime
+deploy/                    Nginx dan systemd unit
 ```
 
 ---
@@ -96,11 +104,11 @@ deploy/                Nginx dan systemd unit
 | Aktor | Akses |
 |---|---|
 | Pengunjung | Melihat informasi acara, melihat booth aktif, membuat pendaftaran, melakukan pembayaran, melihat status dengan `order_id`, melihat tiket jika lunas |
-| Admin terautentikasi | Semua fungsi publik, dashboard, CRUD booth/add-on/konten/pembicara/foto, mengubah status tenant, broadcast email, ekspor CSV, scan dan reset check-in |
+| Admin terautentikasi | Semua fungsi publik, dashboard multi-halaman, CRUD booth/add-on/konten/pembicara/foto, mengubah status tenant, broadcast email, ekspor CSV, scan dan reset check-in |
 | Midtrans | Membuat transaksi dan mengirim notifikasi status pembayaran |
 | SMTP provider | Mengirim email notifikasi dan broadcast |
 
-Semua route `/admin/*` dilindungi decorator `admin_required`, yang memeriksa `session["admin_id"]`.
+Semua route `/admin/*` dilindungi decorator `admin_required`, yang memeriksa `session["admin_id"]` dan otomatis menghapus sesi setelah 5 menit tanpa aktivitas (lihat 9.1).
 
 ---
 
@@ -108,8 +116,8 @@ Semua route `/admin/*` dilindungi decorator `admin_required`, yang memeriksa `se
 
 ### 4.1 Registrasi dan pembayaran
 
-1. Pengunjung membuka `GET /`.
-2. Sistem menampilkan booth aktif, sisa kuota, add-on aktif, konten acara, foto, dan pembicara.
+1. Pengunjung membuka `GET /` (landing page acara) lalu masuk ke `GET /daftar` (formulir pendaftaran), baik lewat tombol CTA maupun tautan "Pilih booth" yang membawa parameter `?booth=<id>` untuk pra-pilih jenis booth.
+2. Sistem menampilkan booth aktif, sisa kuota, dan add-on aktif pada formulir.
 3. Browser mengirim data JSON ke `POST /api/register`.
 4. Backend memvalidasi field wajib, panjang field, email, booth aktif, kuota, add-on, dan deskripsi.
 5. Backend membuat `Tenant` dengan status `pending` dan menyimpan snapshot harga booth serta add-on.
@@ -210,9 +218,9 @@ Memiliki pola yang sama dengan `BoothType`: `name`, `description`, `price`, `is_
 - `gallery_photos`: nama file, caption, urutan, aktif/nonaktif, mode gambar, posisi x/y.
 - `speakers`: nama, institusi, topik, foto, urutan, aktif/nonaktif, posisi x/y.
 - `broadcasts`: subject, body, audience, jumlah penerima/terkirim/gagal, waktu dibuat.
-- `highlight_items`: sorotan acara pada landing page — judul, deskripsi, gambar opsional, urutan, aktif/nonaktif.
-- `agenda_items`: satu baris jadwal pada timeline acara — label waktu, aktivitas, urutan.
-- `reason_items`: alasan bergabung sebagai tenant — judul, deskripsi, urutan.
+- `highlight_items`: sorotan acara pada landing page - judul, deskripsi, gambar opsional, urutan, aktif/nonaktif.
+- `agenda_items`: satu baris jadwal pada timeline acara - label waktu, aktivitas, urutan.
+- `reason_items`: alasan bergabung sebagai tenant - judul, deskripsi, urutan.
 - `keynote_sections`: satu dokumen singleton untuk judul dan isi sesi keynote pada landing page.
 
 ### 5.5 Seed default
@@ -232,7 +240,8 @@ Saat startup, `seed_defaults()` membuat data awal jika koleksi kosong:
 
 | Method | Path | Fungsi |
 |---|---|---|
-| `GET` | `/` | Halaman pendaftaran dan konten acara |
+| `GET` | `/` | Landing page acara (marketing, agenda, booth, alasan hadir) |
+| `GET` | `/daftar` | Formulir pendaftaran tenant, terpisah dari landing page |
 | `POST` | `/api/register` | Membuat tenant dan transaksi Midtrans |
 | `GET` | `/status/<order_id>` | Status pendaftaran; refresh status pending |
 | `POST` | `/api/pay/<order_id>` | Membuka atau membuat ulang pembayaran pending |
@@ -285,24 +294,48 @@ Webhook idempotent terhadap email lunas: email hanya dikirim ketika transisi per
 
 ### 6.4 Route admin
 
+Sejak versi 1.1, dashboard admin bukan lagi satu halaman panjang dengan anchor scroll,
+melainkan satu halaman `GET` per area, semuanya memakai layout bersama
+(`templates/admin/_layout.html`) dengan sidebar navigasi tetap.
+
+**Halaman (GET, dilindungi `admin_required`):**
+
+| Area | Path | Template |
+|---|---|---|
+| Ringkasan | `/admin` | `admin/ringkasan.html` |
+| Sambutan (hero) | `/admin/hero` | `admin/hero.html` |
+| Lokasi | `/admin/lokasi` | `admin/lokasi.html` |
+| Konten summit | `/admin/summit` | `admin/summit.html` |
+| Foto | `/admin/foto` | `admin/foto.html` |
+| Pembicara | `/admin/pembicara` | `admin/pembicara.html` |
+| Booth | `/admin/booth` | `admin/booth.html` |
+| Tambahan | `/admin/tambahan` | `admin/tambahan.html` |
+| Kirim email | `/admin/email` | `admin/email.html` |
+| Pendaftaran | `/admin/pendaftaran` | `admin/pendaftaran.html` |
+| Akun | `/admin/akun` | `admin/akun.html` |
+| Pindai QR | `/admin/scan` | `admin/scan.html` |
+
+**Aksi (POST, mutasi data):**
+
 | Area | Endpoint |
 |---|---|
-| Auth | `GET/POST /admin/login`, `GET /admin/logout` |
-| Dashboard | `GET /admin` |
+| Auth | `GET/POST /admin/login`, `GET /admin/logout`, `GET /admin/idle-logout` |
 | Ekspor | `GET /admin/tenants/export.csv` |
-| Scan | `GET /admin/scan`, `POST /admin/scan/verify`, `POST /admin/scan/reset/<tenant_id>` |
+| Scan | `POST /admin/scan/verify`, `POST /admin/scan/reset/<tenant_id>` |
 | Booth | `POST /admin/booth/new`, `POST /admin/booth/<booth_id>/update` |
 | Add-on | `POST /admin/addon/new`, `POST /admin/addon/<addon_id>/update` |
-| Event | `POST /admin/event` (hero, subjudul, intro, lokasi, catatan) |
+| Event | `POST /admin/event` (dipakai bersama oleh form hero, lokasi, summit, pembicara - hanya field yang dikirim yang diperbarui) |
 | Keynote | `POST /admin/keynote` |
-| Sorotan acara | `POST /admin/highlight/new`, `POST /admin/highlight/<highlight_id>/update` |
-| Agenda | `POST /admin/agenda/new`, `POST /admin/agenda/<agenda_id>/update` |
-| Alasan hadir | `POST /admin/reason/new`, `POST /admin/reason/<reason_id>/update` |
+| Sorotan acara | `POST /admin/highlight/new`, `POST /admin/highlight/<highlight_id>/update`, `POST /admin/highlight/<highlight_id>/delete` |
+| Agenda | `POST /admin/agenda/new`, `POST /admin/agenda/<agenda_id>/update`, `POST /admin/agenda/<agenda_id>/delete` |
+| Alasan hadir | `POST /admin/reason/new`, `POST /admin/reason/<reason_id>/update`, `POST /admin/reason/<reason_id>/delete` |
 | Foto | `POST /admin/photo/upload`, update, delete |
 | Pembicara | `POST /admin/speaker/new`, update, delete |
 | Broadcast | `POST /admin/broadcast` |
 | Akun | `POST /admin/password` |
 | Tenant | update status dan delete melalui `/admin/tenant/<tenant_id>/...` |
+
+Setiap aksi mutasi mengarahkan kembali (redirect) ke halaman area terkait, bukan ke `/admin`.
 
 Semua endpoint admin menggunakan form POST kecuali endpoint scan yang menerima JSON.
 
@@ -365,6 +398,7 @@ Kegagalan email dicatat melalui logger dan tidak menggagalkan registrasi atau we
 - output template memakai escaping Jinja default;
 - status ticket hanya tersedia untuk tenant lunas;
 - QR response memakai `Cache-Control: no-store`;
+- sesi admin otomatis berakhir setelah 5 menit tanpa aktivitas (dicek di server lewat `admin_required`, dan didorong dari sisi klien lewat `admin-idle.js`), lalu diarahkan ke halaman utama;
 - Nginx disiapkan sebagai reverse proxy dan HTTPS perlu diaktifkan.
 
 ### 9.2 Risiko dan hardening yang direkomendasikan

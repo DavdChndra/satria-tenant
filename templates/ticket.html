@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Kartu peserta — {{ tenant.order_id }}{% endblock %}
+{% block title %}Kartu peserta - {{ tenant.order_id }}{% endblock %}
 {% block content %}
 <section class="ticket-section">
   <div class="wrap">
@@ -29,7 +29,7 @@
           <div class="id-meta">
             <div>
               <span class="id-label">Jenis booth</span>
-              <p class="id-value">{{ tenant.booth_type.name if tenant.booth_type else "—" }}</p>
+              <p class="id-value">{{ tenant.booth_type.name if tenant.booth_type else "-" }}</p>
             </div>
             <div>
               <span class="id-label">No. pendaftaran</span>

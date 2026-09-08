@@ -1,0 +1,120 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Kirim email - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Kirim informasi ke pendaftar</h2>
+  <p>Kirim pengumuman atau info teknis lewat email ke pendaftar yang sudah terkumpul.</p>
+</div>
+
+{% if not email_ready %}
+<p class="empty-note">
+  Pengiriman email belum aktif. Isi <strong>SMTP_USER</strong> dan <strong>SMTP_PASS</strong>
+  pada berkas <strong>.env</strong>, lalu jalankan ulang aplikasi.
+</p>
+{% endif %}
+
+<form class="broadcast-form" method="POST" action="{{ url_for('admin_send_broadcast') }}"
+      onsubmit="return confirm('Kirim email ini ke seluruh penerima yang dipilih?');">
+
+  <div class="field">
+    <label>Kirim kepada</label>
+    <div class="audience-options">
+      <label class="audience-option">
+        <input type="radio" name="audience" value="paid" checked>
+        <span class="audience-body">
+          <span class="audience-name">Sudah lunas</span>
+          <span class="audience-count">{{ count_paid }} penerima</span>
+        </span>
+      </label>
+      <label class="audience-option">
+        <input type="radio" name="audience" value="pending">
+        <span class="audience-body">
+          <span class="audience-name">Menunggu pembayaran</span>
+          <span class="audience-count">{{ count_pending }} penerima</span>
+        </span>
+      </label>
+      <label class="audience-option">
+        <input type="radio" name="audience" value="all">
+        <span class="audience-body">
+          <span class="audience-name">Semua pendaftar</span>
+          <span class="audience-count">{{ count_all }} penerima</span>
+        </span>
+      </label>
+      <label class="audience-option">
+        <input type="radio" name="audience" value="custom" id="audience-custom">
+        <span class="audience-body">
+          <span class="audience-name">Pilih manual</span>
+          <span class="audience-count"><span id="picked-count">0</span> dipilih</span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="field recipient-picker" id="recipient-picker" hidden>
+    <label>Pilih penerima</label>
+    <div class="picker-toolbar">
+      <input type="text" id="picker-search" class="picker-search"
+             placeholder="Cari institusi, nama PIC, atau email...">
+      <button type="button" class="btn-outline btn-sm" id="picker-all">Pilih semua</button>
+      <button type="button" class="btn-outline btn-sm" id="picker-none">Kosongkan</button>
+    </div>
+    <div class="picker-list">
+      {% for t in tenants %}
+      <label class="picker-item"
+             data-search="{{ (t.institution_name ~ ' ' ~ t.pic_name ~ ' ' ~ t.email)|lower }}">
+        <input type="checkbox" name="tenant_ids" value="{{ t.id }}">
+        <span class="picker-body">
+          <span class="picker-line">
+            <span class="picker-name">{{ t.institution_name }}</span>
+            <span class="status-dot status-{{ t.payment_status }}">{{ t.payment_status }}</span>
+          </span>
+          <span class="picker-sub">{{ t.pic_name }} &middot; {{ t.email }}</span>
+        </span>
+      </label>
+      {% else %}
+      <p class="picker-empty">Belum ada pendaftar.</p>
+      {% endfor %}
+    </div>
+    <span class="field-hint" id="picker-hint">Tidak ada penerima yang cocok dengan pencarian.</span>
+  </div>
+
+  <div class="field">
+    <label>Judul email</label>
+    <input type="text" name="subject" placeholder="mis. Informasi teknis pelaksanaan pameran" required>
+  </div>
+
+  <div class="field">
+    <label>Isi pesan</label>
+    <textarea name="message" rows="7" required
+              placeholder="Tulis informasi yang ingin disampaikan.&#10;&#10;Pisahkan dengan baris kosong untuk membuat paragraf baru."></textarea>
+    <span class="field-hint">
+      Nama PIC, institusi, nomor pendaftaran, dan tautan status otomatis disertakan di setiap email.
+    </span>
+  </div>
+
+  <button type="submit" class="btn-primary btn-sm" {% if not email_ready %}disabled{% endif %}>
+    Kirim email
+  </button>
+</form>
+
+{% if broadcasts %}
+<div class="broadcast-history">
+  <h3>Riwayat pengiriman</h3>
+  {% for b in broadcasts %}
+  <div class="broadcast-item">
+    <div class="broadcast-item-head">
+      <span class="broadcast-subject">{{ b.subject }}</span>
+      <span class="broadcast-date">{{ b.created_at.strftime("%d %b %Y %H:%M") }}</span>
+    </div>
+    <div class="broadcast-meta">
+      <span class="broadcast-tag">{{ b.audience_label }}</span>
+      <span>{{ b.total_sent }}/{{ b.total_recipients }} terkirim</span>
+      {% if b.total_failed %}<span class="broadcast-failed">{{ b.total_failed }} gagal</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

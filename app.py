@@ -4,7 +4,7 @@ import os
 import re
 import secrets
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import mongoengine as me
 from bson.errors import InvalidId
@@ -27,6 +27,8 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-ganti-di-produksi")
+ADMIN_IDLE_TIMEOUT = timedelta(minutes=5)
+app.config["PERMANENT_SESSION_LIFETIME"] = ADMIN_IDLE_TIMEOUT
 app.config["MIDTRANS_CLIENT_KEY"] = os.environ.get("MIDTRANS_CLIENT_KEY", "")
 app.config["MIDTRANS_IS_PRODUCTION"] = os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true"
 
@@ -51,10 +53,29 @@ me.connect(host=MONGODB_URI)
 # ---------- helper ----------
 
 def admin_required(view):
+    """
+    Wajibkan login admin, dan paksa logout otomatis setelah 5 menit tanpa
+    aktivitas - mengembalikan pengunjung ke halaman utama, bukan ke login,
+    supaya tidak terlihat seperti sesi admin sedang menunggu di sana.
+    """
     @wraps(view)
     def wrapped(*args, **kwargs):
         if not session.get("admin_id"):
             return redirect(url_for("admin_login"))
+
+        last_activity_raw = session.get("last_activity")
+        if last_activity_raw:
+            try:
+                last_activity = datetime.fromisoformat(last_activity_raw)
+            except ValueError:
+                last_activity = None
+            if last_activity is None or datetime.utcnow() - last_activity > ADMIN_IDLE_TIMEOUT:
+                session.clear()
+                flash("Sesi admin berakhir karena tidak ada aktivitas. Silakan login kembali.", "error")
+                return redirect(url_for("index"))
+
+        session.permanent = True
+        session["last_activity"] = datetime.utcnow().isoformat()
         return view(*args, **kwargs)
     return wrapped
 
@@ -230,6 +251,17 @@ def index():
                            event_info=EventInfo.get_or_create(),
                            total_remaining=sum(b.slots_remaining for b in booth_types),
                            booth_colors=BOOTH_COLORS)
+
+
+@app.route("/daftar")
+def registration_form():
+    """Halaman formulir pendaftaran tenant - terpisah dari landing page acara."""
+    booth_types = BoothType.objects(is_active=True).order_by("sort_order")
+    add_ons = AddOn.objects(is_active=True).order_by("sort_order", "id")
+    return render_template("register.html",
+                           booth_types=booth_types,
+                           add_ons=add_ons,
+                           event_info=EventInfo.get_or_create())
 
 
 @app.route("/api/register", methods=["POST"])
@@ -428,7 +460,7 @@ def ticket_qr(order_id):
 
 @app.route("/ticket/<order_id>")
 def ticket_preview(order_id):
-    """Pratinjau ID card peserta — hanya untuk pendaftaran yang sudah lunas."""
+    """Pratinjau ID card peserta - hanya untuk pendaftaran yang sudah lunas."""
     tenant = get_by_field_or_404(Tenant, order_id=order_id)
     if tenant.payment_status != "paid":
         flash("Kartu peserta terbit setelah pembayaran lunas.", "error")
@@ -517,7 +549,10 @@ def admin_login():
         password = request.form.get("password", "")
         user = AdminUser.objects(username=username).first()
         if user and check_password_hash(user.password_hash, password):
+            session.clear()
             session["admin_id"] = str(user.id)
+            session["last_activity"] = datetime.utcnow().isoformat()
+            session.permanent = True
             return redirect(url_for("admin_dashboard"))
         flash("Username atau password salah.", "error")
     return render_template("admin/login.html")
@@ -525,49 +560,143 @@ def admin_login():
 
 @app.route("/admin/logout")
 def admin_logout():
-    session.pop("admin_id", None)
+    session.clear()
     return redirect(url_for("admin_login"))
+
+
+@app.route("/admin/idle-logout")
+def admin_idle_logout():
+    """Dipanggil dari sisi klien saat admin tidak aktif selama 5 menit."""
+    session.clear()
+    flash("Sesi admin berakhir karena tidak ada aktivitas.", "error")
+    return redirect(url_for("index"))
 
 
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    tenants = list(Tenant.objects.order_by("-created_at"))
-    booth_types = BoothType.objects.order_by("sort_order")
-
+    """Ringkasan - halaman awal admin, hanya statistik dan pintasan."""
+    tenants = Tenant.objects.only("payment_status", "price_at_registration", "selected_add_ons")
     total_paid = sum(t.total_amount for t in tenants if t.payment_status == "paid")
     total_pending = sum(1 for t in tenants if t.payment_status == "pending")
-    total_registrations = len(tenants)
-
-    photos = GalleryPhoto.objects.order_by("sort_order", "id")
-    broadcasts = Broadcast.objects.order_by("-created_at").limit(10)
-    speakers = Speaker.objects.order_by("sort_order", "id")
-    add_ons = AddOn.objects.order_by("sort_order", "id")
-    highlight_items = HighlightItem.objects.order_by("sort_order", "id")
-    agenda_items = AgendaItem.objects.order_by("sort_order", "id")
-    reason_items = ReasonItem.objects.order_by("sort_order", "id")
+    total_registrations = tenants.count()
 
     return render_template(
-        "admin/dashboard.html",
-        tenants=tenants,
-        booth_types=booth_types,
-        photos=photos,
-        speakers=speakers,
-        add_ons=add_ons,
-        highlight_items=highlight_items,
-        agenda_items=agenda_items,
-        reason_items=reason_items,
-        keynote_section=KeynoteSection.get_or_create(),
-        broadcasts=broadcasts,
-        email_ready=email_is_configured(),
-        count_all=len(tenants),
-        count_paid=sum(1 for t in tenants if t.payment_status == "paid"),
-        count_pending=total_pending,
-        event_info=EventInfo.get_or_create(),
+        "admin/ringkasan.html",
+        active_nav="ringkasan",
         total_paid=total_paid,
         total_pending=total_pending,
         total_registrations=total_registrations,
     )
+
+
+@app.route("/admin/hero")
+@admin_required
+def admin_hero():
+    """Halaman pengaturan sambutan (hero) di landing page."""
+    return render_template("admin/hero.html", active_nav="hero", event_info=EventInfo.get_or_create())
+
+
+@app.route("/admin/lokasi")
+@admin_required
+def admin_lokasi():
+    """Halaman pengaturan lokasi dan catatan acara."""
+    return render_template("admin/lokasi.html", active_nav="lokasi", event_info=EventInfo.get_or_create())
+
+
+@app.route("/admin/summit")
+@admin_required
+def admin_summit():
+    """Halaman pengaturan konten summit: intro, keynote, sorotan, agenda, alasan hadir."""
+    return render_template(
+        "admin/summit.html",
+        active_nav="summit",
+        event_info=EventInfo.get_or_create(),
+        keynote_section=KeynoteSection.get_or_create(),
+        highlight_items=HighlightItem.objects.order_by("sort_order", "id"),
+        agenda_items=AgendaItem.objects.order_by("sort_order", "id"),
+        reason_items=ReasonItem.objects.order_by("sort_order", "id"),
+    )
+
+
+@app.route("/admin/foto")
+@admin_required
+def admin_foto():
+    """Halaman pengelolaan foto carousel."""
+    return render_template(
+        "admin/foto.html",
+        active_nav="foto",
+        photos=GalleryPhoto.objects.order_by("sort_order", "id"),
+    )
+
+
+@app.route("/admin/pembicara")
+@admin_required
+def admin_pembicara():
+    """Halaman pengelolaan pembicara acara."""
+    return render_template(
+        "admin/pembicara.html",
+        active_nav="pembicara",
+        event_info=EventInfo.get_or_create(),
+        speakers=Speaker.objects.order_by("sort_order", "id"),
+    )
+
+
+@app.route("/admin/booth")
+@admin_required
+def admin_booth():
+    """Halaman pengaturan jenis booth."""
+    return render_template(
+        "admin/booth.html",
+        active_nav="booth",
+        booth_types=BoothType.objects.order_by("sort_order"),
+    )
+
+
+@app.route("/admin/tambahan")
+@admin_required
+def admin_tambahan():
+    """Halaman pengaturan opsi tambahan pendaftaran."""
+    return render_template(
+        "admin/tambahan.html",
+        active_nav="tambahan",
+        add_ons=AddOn.objects.order_by("sort_order", "id"),
+    )
+
+
+@app.route("/admin/email")
+@admin_required
+def admin_email():
+    """Halaman pengiriman email broadcast ke pendaftar."""
+    tenants = list(Tenant.objects.order_by("-created_at"))
+    return render_template(
+        "admin/email.html",
+        active_nav="email",
+        tenants=tenants,
+        broadcasts=Broadcast.objects.order_by("-created_at").limit(10),
+        email_ready=email_is_configured(),
+        count_all=len(tenants),
+        count_paid=sum(1 for t in tenants if t.payment_status == "paid"),
+        count_pending=sum(1 for t in tenants if t.payment_status == "pending"),
+    )
+
+
+@app.route("/admin/pendaftaran")
+@admin_required
+def admin_pendaftaran():
+    """Halaman daftar pendaftaran tenant."""
+    return render_template(
+        "admin/pendaftaran.html",
+        active_nav="pendaftaran",
+        tenants=Tenant.objects.order_by("-created_at"),
+    )
+
+
+@app.route("/admin/akun")
+@admin_required
+def admin_akun():
+    """Halaman ubah password admin."""
+    return render_template("admin/akun.html", active_nav="akun")
 
 
 @app.route("/admin/tenants/export.csv")
@@ -625,6 +754,7 @@ def admin_scan():
     total_paid = Tenant.objects(payment_status="paid").count()
     total_in = Tenant.objects(checked_in_at__ne=None).count()
     return render_template("admin/scan.html",
+                           active_nav="scan",
                            checked_in=checked_in,
                            total_paid=total_paid,
                            total_in=total_in)
@@ -689,10 +819,10 @@ def admin_update_booth(booth_id):
     quota = nonnegative_int(request.form.get("quota", booth.quota))
     if not name:
         flash("Nama jenis booth wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_booth"))
     if price is None or quota is None:
         flash("Harga dan kuota harus berupa angka.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_booth"))
     booth.name = name
     booth.description = form_text("description", booth.description)
     booth.price = price
@@ -700,7 +830,7 @@ def admin_update_booth(booth_id):
     booth.is_active = request.form.get("is_active") == "on"
     booth.save()
     flash(f"Pengaturan '{booth.name}' berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_booth"))
 
 
 @app.route("/admin/booth/new", methods=["POST"])
@@ -710,11 +840,11 @@ def admin_new_booth():
     quota = nonnegative_int(request.form.get("quota"))
     if price is None or quota is None:
         flash("Harga dan kuota harus berupa angka.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_booth"))
     name = form_text("name")
     if not name:
         flash("Nama jenis booth wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_booth"))
     BoothType(
         name=name,
         description=form_text("description"),
@@ -723,7 +853,7 @@ def admin_new_booth():
         sort_order=next_sort_order(BoothType),
     ).save()
     flash(f"Jenis booth '{name}' ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_booth"))
 
 
 @app.route("/admin/addon/<addon_id>/update", methods=["POST"])
@@ -734,18 +864,18 @@ def admin_update_addon(addon_id):
     name = form_text("name")
     if not name:
         flash("Nama opsi tambahan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
+        return redirect(url_for("admin_tambahan"))
     price = nonnegative_int(request.form.get("price", addon.price))
     if price is None:
         flash("Harga harus berupa angka.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
+        return redirect(url_for("admin_tambahan"))
     addon.name = name
     addon.description = form_text("description")
     addon.price = price
     addon.is_active = request.form.get("is_active") == "on"
     addon.save()
     flash(f"Opsi tambahan '{addon.name}' berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
+    return redirect(url_for("admin_tambahan"))
 
 
 @app.route("/admin/addon/new", methods=["POST"])
@@ -755,11 +885,11 @@ def admin_new_addon():
     name = form_text("name")
     if not name:
         flash("Nama opsi tambahan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
+        return redirect(url_for("admin_tambahan"))
     price = nonnegative_int(request.form.get("price"))
     if price is None:
         flash("Harga harus berupa angka.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
+        return redirect(url_for("admin_tambahan"))
     AddOn(
         name=name,
         description=form_text("description"),
@@ -767,7 +897,7 @@ def admin_new_addon():
         sort_order=next_sort_order(AddOn),
     ).save()
     flash(f"Opsi tambahan '{name}' ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-tambahan"))
+    return redirect(url_for("admin_tambahan"))
 
 
 @app.route("/admin/password", methods=["POST"])
@@ -791,22 +921,35 @@ def admin_change_password():
         user.save()
         flash("Password berhasil diubah.", "success")
 
-    return redirect(url_for("admin_dashboard", _anchor="panel-akun"))
+    return redirect(url_for("admin_akun"))
+
+
+ADMIN_EVENT_SECTION_ENDPOINTS = {
+    "hero": "admin_hero",
+    "lokasi": "admin_lokasi",
+    "summit": "admin_summit",
+    "pembicara": "admin_pembicara",
+}
 
 
 @app.route("/admin/event", methods=["POST"])
 @admin_required
 def admin_update_event():
-    """Perbarui informasi lokasi dan tanggal acara."""
+    """Perbarui informasi acara. Setiap form kirim hanya kolom miliknya sendiri."""
     info = EventInfo.get_or_create()
-    info.venue_name = request.form.get("venue_name", "").strip()
-    info.address = request.form.get("address", "").strip()
-    info.event_date = request.form.get("event_date", "").strip()
 
-    maps_url = request.form.get("maps_url", "").strip()
-    if maps_url and not maps_url.startswith(("http://", "https://")):
-        maps_url = "https://" + maps_url
-    info.maps_url = maps_url
+    if "venue_name" in request.form:
+        info.venue_name = request.form.get("venue_name", "").strip()
+    if "address" in request.form:
+        info.address = request.form.get("address", "").strip()
+    if "event_date" in request.form:
+        info.event_date = request.form.get("event_date", "").strip()
+
+    if "maps_url" in request.form:
+        maps_url = request.form.get("maps_url", "").strip()
+        if maps_url and not maps_url.startswith(("http://", "https://")):
+            maps_url = "https://" + maps_url
+        info.maps_url = maps_url
 
     for field in ("hero_eyebrow", "hero_title_before", "hero_title_accent",
                   "hero_title_after", "hero_lead", "hero_note", "hero_note_prefix",
@@ -826,7 +969,8 @@ def admin_update_event():
 
     info.save()
     flash("Informasi acara berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard"))
+    endpoint = ADMIN_EVENT_SECTION_ENDPOINTS.get(request.form.get("section"), "admin_dashboard")
+    return redirect(url_for(endpoint))
 
 
 @app.route("/admin/keynote", methods=["POST"])
@@ -838,7 +982,7 @@ def admin_update_keynote():
     keynote.body = form_text("body")
     keynote.save()
     flash("Konten keynote berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/highlight/new", methods=["POST"])
@@ -849,14 +993,14 @@ def admin_new_highlight():
     description = form_text("description")
     if not title or not description:
         flash("Judul dan deskripsi sorotan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+        return redirect(url_for("admin_summit"))
     HighlightItem(
         title=title,
         description=description,
         sort_order=next_sort_order(HighlightItem),
     ).save()
     flash(f"Sorotan '{title}' ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/highlight/<highlight_id>/update", methods=["POST"])
@@ -867,14 +1011,24 @@ def admin_update_highlight(highlight_id):
     title = form_text("title")
     if not title:
         flash("Judul sorotan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+        return redirect(url_for("admin_summit"))
     item.title = title
     item.description = form_text("description")
     item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.is_active = request.form.get("is_active") == "on"
     item.save()
     flash(f"Sorotan '{item.title}' berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
+
+
+@app.route("/admin/highlight/<highlight_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_highlight(highlight_id):
+    """Hapus satu sorotan acara."""
+    item = get_or_404(HighlightItem, highlight_id)
+    item.delete()
+    flash("Sorotan dihapus.", "success")
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/agenda/new", methods=["POST"])
@@ -885,14 +1039,14 @@ def admin_new_agenda():
     activity = form_text("activity")
     if not time_label or not activity:
         flash("Waktu dan aktivitas agenda wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+        return redirect(url_for("admin_summit"))
     AgendaItem(
         time_label=time_label,
         activity=activity,
         sort_order=next_sort_order(AgendaItem),
     ).save()
     flash("Item agenda ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/agenda/<agenda_id>/update", methods=["POST"])
@@ -904,13 +1058,23 @@ def admin_update_agenda(agenda_id):
     activity = form_text("activity")
     if not time_label or not activity:
         flash("Waktu dan aktivitas agenda wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+        return redirect(url_for("admin_summit"))
     item.time_label = time_label
     item.activity = activity
     item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.save()
     flash("Item agenda berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
+
+
+@app.route("/admin/agenda/<agenda_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_agenda(agenda_id):
+    """Hapus satu item jadwal pada agenda acara."""
+    item = get_or_404(AgendaItem, agenda_id)
+    item.delete()
+    flash("Item agenda dihapus.", "success")
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/reason/new", methods=["POST"])
@@ -921,14 +1085,14 @@ def admin_new_reason():
     description = form_text("description")
     if not title or not description:
         flash("Judul dan deskripsi alasan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+        return redirect(url_for("admin_summit"))
     ReasonItem(
         title=title,
         description=description,
         sort_order=next_sort_order(ReasonItem),
     ).save()
     flash(f"Alasan '{title}' ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/reason/<reason_id>/update", methods=["POST"])
@@ -939,13 +1103,23 @@ def admin_update_reason(reason_id):
     title = form_text("title")
     if not title:
         flash("Judul alasan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+        return redirect(url_for("admin_summit"))
     item.title = title
     item.description = form_text("description")
     item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.save()
     flash(f"Alasan '{item.title}' berhasil disimpan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    return redirect(url_for("admin_summit"))
+
+
+@app.route("/admin/reason/<reason_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_reason(reason_id):
+    """Hapus satu alasan bergabung sebagai tenant."""
+    item = get_or_404(ReasonItem, reason_id)
+    item.delete()
+    flash("Alasan dihapus.", "success")
+    return redirect(url_for("admin_summit"))
 
 
 @app.route("/admin/photo/upload", methods=["POST"])
@@ -955,7 +1129,7 @@ def admin_upload_photo():
     files = [f for f in request.files.getlist("photos") if f and f.filename]
     if not files:
         flash("Pilih minimal satu berkas foto terlebih dahulu.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_foto"))
 
     caption = request.form.get("caption", "").strip()
     max_order = next_sort_order(GalleryPhoto) - 1
@@ -977,8 +1151,8 @@ def admin_upload_photo():
     if saved:
         flash(f"{saved} foto berhasil diunggah.", "success")
     if rejected:
-        flash(f"{rejected} berkas ditolak — hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
-    return redirect(url_for("admin_dashboard"))
+        flash(f"{rejected} berkas ditolak - hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
+    return redirect(url_for("admin_foto"))
 
 
 @app.route("/admin/photo/<photo_id>/update", methods=["POST"])
@@ -989,7 +1163,7 @@ def admin_update_photo(photo_id):
     sort_order = nonnegative_int(request.form.get("sort_order", photo.sort_order))
     if sort_order is None:
         flash("Urutan harus berupa angka.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_foto"))
     photo.caption = form_text("caption")
     photo.sort_order = sort_order
     photo.is_active = request.form.get("is_active") == "on"
@@ -1004,7 +1178,7 @@ def admin_update_photo(photo_id):
         setattr(photo, field, max(0, min(100, value)))
     photo.save()
     flash("Foto berhasil diperbarui.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_foto"))
 
 
 @app.route("/admin/photo/<photo_id>/delete", methods=["POST"])
@@ -1015,7 +1189,7 @@ def admin_delete_photo(photo_id):
     delete_photo_file(photo.filename)
     photo.delete()
     flash("Foto berhasil dihapus.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_foto"))
 
 
 def _tenants_for_audience(audience, selected_ids=None):
@@ -1049,10 +1223,10 @@ def admin_send_broadcast():
         audience = "paid"
     if not subject or not message:
         flash("Judul dan isi pesan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_email"))
     if not email_is_configured():
         flash("Pengiriman email belum dikonfigurasi. Isi SMTP_USER dan SMTP_PASS di berkas .env.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_email"))
 
     recipients = _tenants_for_audience(audience, request.form.getlist("tenant_ids"))
     if not recipients:
@@ -1060,7 +1234,7 @@ def admin_send_broadcast():
             flash("Pilih minimal satu penerima terlebih dahulu.", "error")
         else:
             flash("Tidak ada penerima pada kelompok yang dipilih.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_email"))
 
     sent = 0
     for tenant in recipients:
@@ -1082,7 +1256,7 @@ def admin_send_broadcast():
         flash(f"Email terkirim ke {sent} dari {len(recipients)} penerima. {failed} gagal dikirim.", "error")
     else:
         flash(f"Email berhasil dikirim ke {sent} penerima.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_email"))
 
 
 @app.route("/admin/speaker/new", methods=["POST"])
@@ -1092,14 +1266,14 @@ def admin_new_speaker():
     name = form_text("name")
     if not name:
         flash("Nama pembicara wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_pembicara"))
 
     filename = ""
     upload = request.files.get("photo")
     if upload and upload.filename:
         filename = save_uploaded_photo(upload) or ""
         if not filename:
-            flash("Foto ditolak — hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
+            flash("Foto ditolak - hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
 
     Speaker(
         name=name,
@@ -1109,7 +1283,7 @@ def admin_new_speaker():
         sort_order=next_sort_order(Speaker),
     ).save()
     flash(f"Pembicara '{name}' ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_pembicara"))
 
 
 @app.route("/admin/speaker/<speaker_id>/update", methods=["POST"])
@@ -1121,10 +1295,10 @@ def admin_update_speaker(speaker_id):
     sort_order = nonnegative_int(request.form.get("sort_order", speaker.sort_order))
     if not name:
         flash("Nama pembicara wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_pembicara"))
     if sort_order is None:
         flash("Urutan harus berupa angka.", "error")
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_pembicara"))
     speaker.name = name
     speaker.institution = form_text("institution")
     speaker.topic = form_text("topic")
@@ -1145,11 +1319,11 @@ def admin_update_speaker(speaker_id):
             delete_photo_file(speaker.photo)
             speaker.photo = filename
         else:
-            flash("Foto ditolak — hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
+            flash("Foto ditolak - hanya JPG, PNG, WEBP, atau GIF yang diterima.", "error")
 
     speaker.save()
     flash(f"Data pembicara '{speaker.name}' disimpan.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_pembicara"))
 
 
 @app.route("/admin/speaker/<speaker_id>/delete", methods=["POST"])
@@ -1161,7 +1335,7 @@ def admin_delete_speaker(speaker_id):
     name = speaker.name
     speaker.delete()
     flash(f"Pembicara '{name}' dihapus.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_pembicara"))
 
 
 @app.route("/admin/tenant/<tenant_id>/status", methods=["POST"])
@@ -1175,11 +1349,11 @@ def admin_update_tenant_status(tenant_id):
     admin = get_or_404(AdminUser, session["admin_id"])
     if not check_password_hash(admin.password_hash, confirm_password):
         flash("Password salah. Status pembayaran tidak diubah.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
+        return redirect(url_for("admin_pendaftaran"))
 
     if new_status not in ("pending", "paid", "expired", "cancelled", "failed", "refunded"):
         flash("Status pembayaran tidak valid.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
+        return redirect(url_for("admin_pendaftaran"))
 
     was_paid = tenant.payment_status == "paid"
     tenant.payment_status = new_status
@@ -1195,7 +1369,7 @@ def admin_update_tenant_status(tenant_id):
         if send_payment_success(tenant, url_for("registration_status",
                                                 order_id=tenant.order_id, _external=True)):
             flash(f"Email bukti lunas dikirim ke {tenant.email}.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-pendaftaran"))
+    return redirect(url_for("admin_pendaftaran"))
 
 
 @app.route("/admin/tenant/<tenant_id>/delete", methods=["POST"])
@@ -1205,14 +1379,14 @@ def admin_delete_tenant(tenant_id):
     Hapus satu pendaftaran secara permanen.
 
     Dipakai untuk membersihkan data uji atau pendaftaran ganda. Riwayat
-    pembayaran di Midtrans tidak ikut terhapus — pengembalian dana, bila perlu,
+    pembayaran di Midtrans tidak ikut terhapus - pengembalian dana, bila perlu,
     tetap dilakukan lewat dasbor Midtrans.
     """
     tenant = get_or_404(Tenant, tenant_id)
     order_id = tenant.order_id
     tenant.delete()
     flash(f"Pendaftaran {order_id} telah dihapus.", "success")
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_pendaftaran"))
 
 
 @app.errorhandler(413)

@@ -1,0 +1,98 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Foto - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Foto carousel</h2>
+  <p>Foto yang tampil bergantian di halaman depan. Urutan kecil tampil lebih dulu.</p>
+</div>
+
+<form class="photo-upload-form" method="POST" enctype="multipart/form-data"
+      action="{{ url_for('admin_upload_photo') }}">
+  <div class="field">
+    <label>Pilih foto</label>
+    <input type="file" name="photos" accept="image/*" multiple required>
+    <span class="field-hint">JPG, PNG, WEBP, atau GIF. Maksimal 5 MB per foto. Rasio ideal 16:7. Bisa pilih lebih dari satu sekaligus.</span>
+  </div>
+  <div class="field">
+    <label>Keterangan (opsional)</label>
+    <input type="text" name="caption" placeholder="mis. Suasana pameran tahun lalu">
+    <span class="field-hint">Hanya dipakai bila Anda mengunggah satu foto.</span>
+  </div>
+  <button type="submit" class="btn-primary btn-sm">Unggah foto</button>
+</form>
+
+{% if photos %}
+<div class="photo-grid">
+  {% for p in photos %}
+  <div class="photo-card {% if not p.is_active %}inactive{% endif %}">
+    <div class="photo-thumb">
+      <img src="{{ url_for('static', filename='uploads/' ~ p.filename) }}" alt="{{ p.caption }}"
+           class="adjust-preview"
+           style="object-fit:{{ p.fit_mode or 'contain' }};object-position:{{ p.object_position }};">
+      {% if not p.is_active %}<span class="photo-hidden-badge">Disembunyikan</span>{% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('admin_update_photo', photo_id=p.id) }}" class="photo-form">
+      <div class="field">
+        <label>Keterangan</label>
+        <input type="text" name="caption" value="{{ p.caption }}" placeholder="Tanpa keterangan">
+      </div>
+
+      <div class="field adjust-box">
+        <label>Tampilan gambar</label>
+        <div class="fit-choice">
+          <label class="fit-opt">
+            <input type="radio" name="fit_mode" value="contain"
+                   {% if (p.fit_mode or 'contain') == 'contain' %}checked{% endif %}>
+            <span>Utuh</span>
+          </label>
+          <label class="fit-opt">
+            <input type="radio" name="fit_mode" value="cover"
+                   {% if p.fit_mode == 'cover' %}checked{% endif %}>
+            <span>Penuhi bingkai</span>
+          </label>
+        </div>
+
+        <div class="pos-controls" {% if (p.fit_mode or 'contain') != 'cover' %}hidden{% endif %}>
+          <div class="pos-row">
+            <span class="pos-label">Kiri - kanan</span>
+            <input type="range" name="pos_x" min="0" max="100" step="1"
+                   value="{{ p.pos_x if p.pos_x is not none else 50 }}" class="pos-slider">
+            <output class="pos-value">{{ p.pos_x if p.pos_x is not none else 50 }}%</output>
+          </div>
+          <div class="pos-row">
+            <span class="pos-label">Atas - bawah</span>
+            <input type="range" name="pos_y" min="0" max="100" step="1"
+                   value="{{ p.pos_y if p.pos_y is not none else 50 }}" class="pos-slider">
+            <output class="pos-value">{{ p.pos_y if p.pos_y is not none else 50 }}%</output>
+          </div>
+          <span class="field-hint">Geser untuk memilih bagian gambar yang tampil.</span>
+          <span class="field-hint pos-note" hidden></span>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Urutan</label>
+          <input type="number" name="sort_order" value="{{ p.sort_order }}" min="0">
+        </div>
+        <div class="field photo-active-field">
+          <label class="checkbox-label">
+            <input type="checkbox" name="is_active" {% if p.is_active %}checked{% endif %}>
+            Tampilkan
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn-outline btn-sm">Simpan</button>
+    </form>
+    <form method="POST" action="{{ url_for('admin_delete_photo', photo_id=p.id) }}"
+          onsubmit="return confirm('Hapus foto ini secara permanen?');">
+      <button type="submit" class="btn-danger btn-sm">Hapus</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty-note">Belum ada foto. Unggah foto pertama agar carousel muncul di halaman depan.</p>
+{% endif %}
+
+{% endblock %}

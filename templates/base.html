@@ -3,24 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}Pendaftaran Tenant Pameran — SATRIA 2026{% endblock %}</title>
+<title>{% block title %}SATRIA 2026 — Pameran Tenant Telkom University{% endblock %}</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Logo AILO Squared.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 {% block head %}{% endblock %}
 </head>
 <body>
-<header class="site-header">
-  <div class="wrap header-inner">
-    <div class="brand">
-      <div class="brand-mark"><span>S</span></div>
-      SATRIA 2026
-    </div>
-    <span class="header-sub">Pendaftaran tenant pameran</span>
-  </div>
-</header>
-
 <main>
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -35,7 +26,10 @@
 </main>
 
 <footer class="site-footer">
-  <div class="wrap">© 2026 SATRIA - Telkom University</div>
+  <div class="wrap">
+    <img src="{{ url_for('static', filename='img/Logo AILO Horizontal.png') }}" alt="AILO Center of Excellence" style="height:28px;margin:0 auto 10px;display:block;opacity:0.7;">
+    <p>© 2026 Panitia SATRIA — Telkom University · AILO Center of Excellence</p>
+  </div>
 </footer>
 {% block scripts %}{% endblock %}
 </body>

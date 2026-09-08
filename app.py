@@ -156,6 +156,18 @@ def seed_defaults():
             event_date="15 - 17 Mei 2026",
             maps_url="https://maps.google.com/?q=Telkom+University+Bandung",
         ).save()
+    if AdminUser.objects.count() == 0:
+        AdminUser(
+            username="admin",
+            password_hash=generate_password_hash("ubah-password-ini"),
+        ).save()
+    if AddOn.objects.count() == 0:
+        AddOn(name="Makan malam (dinner)",
+              description="Termasuk makan malam bersama panitia dan peserta lain di hotel.",
+              price=75000, sort_order=1).save()
+        AddOn(name="Cetak poster",
+              description="Poster A1 dicetak panitia dan dipasang di area booth Anda.",
+              price=40000, sort_order=2).save()
     if HighlightItem.objects.count() == 0:
         HighlightItem(title="50+ Tenant",
                       description="Booth UMKM, komunitas, dan startup kampus dalam satu area pameran.",
@@ -170,42 +182,29 @@ def seed_defaults():
                       description="Penampilan musik dan pertunjukan mahasiswa sepanjang acara.",
                       sort_order=4).save()
     if AgendaItem.objects.count() == 0:
-        agenda_defaults = [
-            ("08.00", "Registrasi dan pembukaan booth"),
-            ("09.30", "Sesi pembuka dan sambutan panitia"),
-            ("11.00", "Talkshow kewirausahaan"),
-            ("12.30", "Istirahat dan jejaring"),
-            ("13.30", "Sesi komunitas dan hiburan panggung"),
-            ("17.00", "Booth ditutup"),
-        ]
-        for order, (time_label, activity) in enumerate(agenda_defaults, start=1):
-            AgendaItem(time_label=time_label, activity=activity, sort_order=order).save()
+        AgendaItem(time_label="08.00", activity="Registrasi & pembukaan booth", sort_order=1).save()
+        AgendaItem(time_label="09.30", activity="Sesi pembuka & sambutan panitia", sort_order=2).save()
+        AgendaItem(time_label="11.00", activity="Talkshow kewirausahaan", sort_order=3).save()
+        AgendaItem(time_label="12.30", activity="Istirahat & jejaring", sort_order=4).save()
+        AgendaItem(time_label="13.30", activity="Sesi komunitas & hiburan panggung", sort_order=5).save()
+        AgendaItem(time_label="17.00", activity="Booth ditutup", sort_order=6).save()
     if ReasonItem.objects.count() == 0:
-        reason_defaults = [
-            ("Jangkau ratusan pengunjung", "Booth Anda terlihat langsung oleh pengunjung kampus dan komunitas sekitar."),
-            ("Bangun relasi baru", "Bertemu tenant lain, komunitas, dan calon pelanggan dalam satu tempat."),
-            ("Proses pendaftaran mudah", "Daftar dan bayar online, lalu pantau status kapan saja."),
-        ]
-        for order, (title, description) in enumerate(reason_defaults, start=1):
-            ReasonItem(title=title, description=description, sort_order=order).save()
+        ReasonItem(title="Jangkau ratusan pengunjung",
+                  description="Booth kamu terlihat langsung oleh pengunjung kampus dan komunitas sekitar.",
+                  sort_order=1).save()
+        ReasonItem(title="Bangun relasi baru",
+                  description="Bertemu tenant lain, komunitas, dan calon pelanggan dalam satu tempat.",
+                  sort_order=2).save()
+        ReasonItem(title="Proses pendaftaran mudah",
+                  description="Daftar dan bayar online, pantau status kapan saja lewat halaman status.",
+                  sort_order=3).save()
     if KeynoteSection.objects.count() == 0:
         KeynoteSection(
             title="Membangun masa depan kewirausahaan kampus",
-            body=("Sesi pembuka SATRIA 2026 mengangkat cerita nyata dari tenant-tenant "
-                  "yang tumbuh dari booth kecil di kampus menjadi bisnis yang berkelanjutan."),
+            body="Sesi pembuka SATRIA 2026 mengangkat cerita nyata dari tenant-tenant yang "
+                 "tumbuh dari booth kecil di kampus menjadi bisnis yang berkelanjutan. Panitia "
+                 "mengundang seluruh peserta untuk hadir sejak sesi pertama.",
         ).save()
-    if AdminUser.objects.count() == 0:
-        AdminUser(
-            username="admin",
-            password_hash=generate_password_hash("ubah-password-ini"),
-        ).save()
-    if AddOn.objects.count() == 0:
-        AddOn(name="Makan malam (dinner)",
-              description="Termasuk makan malam bersama panitia dan peserta lain di hotel.",
-              price=75000, sort_order=1).save()
-        AddOn(name="Cetak poster",
-              description="Poster A1 dicetak panitia dan dipasang di area booth Anda.",
-              price=40000, sort_order=2).save()
 
 
 # ---------- halaman publik ----------
@@ -216,7 +215,7 @@ def index():
     photos = GalleryPhoto.objects(is_active=True).order_by("sort_order", "id")
     speakers = Speaker.objects(is_active=True).order_by("sort_order", "id")
     add_ons = AddOn.objects(is_active=True).order_by("sort_order", "id")
-    highlights = HighlightItem.objects(is_active=True).order_by("sort_order", "id")
+    highlight_items = HighlightItem.objects(is_active=True).order_by("sort_order", "id")
     agenda_items = AgendaItem.objects.order_by("sort_order", "id")
     reason_items = ReasonItem.objects.order_by("sort_order", "id")
     return render_template("index.html",
@@ -224,7 +223,7 @@ def index():
                            photos=photos,
                            speakers=speakers,
                            add_ons=add_ons,
-                           highlight_items=highlights,
+                           highlight_items=highlight_items,
                            agenda_items=agenda_items,
                            reason_items=reason_items,
                            keynote_section=KeynoteSection.get_or_create(),
@@ -431,7 +430,6 @@ def ticket_qr(order_id):
 def ticket_preview(order_id):
     """Pratinjau ID card peserta — hanya untuk pendaftaran yang sudah lunas."""
     tenant = get_by_field_or_404(Tenant, order_id=order_id)
-    refresh_pending_tenant_status(tenant)
     if tenant.payment_status != "paid":
         flash("Kartu peserta terbit setelah pembayaran lunas.", "error")
         return redirect(url_for("registration_status", order_id=order_id))
@@ -545,6 +543,9 @@ def admin_dashboard():
     broadcasts = Broadcast.objects.order_by("-created_at").limit(10)
     speakers = Speaker.objects.order_by("sort_order", "id")
     add_ons = AddOn.objects.order_by("sort_order", "id")
+    highlight_items = HighlightItem.objects.order_by("sort_order", "id")
+    agenda_items = AgendaItem.objects.order_by("sort_order", "id")
+    reason_items = ReasonItem.objects.order_by("sort_order", "id")
 
     return render_template(
         "admin/dashboard.html",
@@ -553,9 +554,9 @@ def admin_dashboard():
         photos=photos,
         speakers=speakers,
         add_ons=add_ons,
-        highlight_items=HighlightItem.objects.order_by("sort_order", "id"),
-        agenda_items=AgendaItem.objects.order_by("sort_order", "id"),
-        reason_items=ReasonItem.objects.order_by("sort_order", "id"),
+        highlight_items=highlight_items,
+        agenda_items=agenda_items,
+        reason_items=reason_items,
         keynote_section=KeynoteSection.get_or_create(),
         broadcasts=broadcasts,
         email_ready=email_is_configured(),
@@ -808,158 +809,143 @@ def admin_update_event():
     info.maps_url = maps_url
 
     for field in ("hero_eyebrow", "hero_title_before", "hero_title_accent",
-                  "hero_title_after", "hero_lead", "hero_video_url", "subtitle",
-                  "hero_note", "hero_note_prefix", "intro_title", "intro_body"):
+                  "hero_title_after", "hero_lead", "hero_note", "hero_note_prefix",
+                  "subtitle", "hero_video_url", "intro_title", "intro_body"):
         if field in request.form:
             setattr(info, field, request.form.get(field, "").strip())
 
-    info.speakers_eyebrow = request.form.get("speakers_eyebrow", "").strip()
-    info.speakers_title = request.form.get("speakers_title", "").strip()
-    info.speakers_subtitle = request.form.get("speakers_subtitle", "").strip()
+    if "speakers_eyebrow" in request.form:
+        info.speakers_eyebrow = request.form.get("speakers_eyebrow", "").strip()
+    if "speakers_title" in request.form:
+        info.speakers_title = request.form.get("speakers_title", "").strip()
+    if "speakers_subtitle" in request.form:
+        info.speakers_subtitle = request.form.get("speakers_subtitle", "").strip()
 
-    info.event_notes = request.form.get("event_notes", "").strip()
+    if "event_notes" in request.form:
+        info.event_notes = request.form.get("event_notes", "").strip()
 
     info.save()
-    flash("Informasi lokasi acara berhasil disimpan.", "success")
+    flash("Informasi acara berhasil disimpan.", "success")
     return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/keynote", methods=["POST"])
+@admin_required
+def admin_update_keynote():
+    """Ubah judul dan isi bagian keynote pada halaman depan."""
+    keynote = KeynoteSection.get_or_create()
+    keynote.title = form_text("title")
+    keynote.body = form_text("body")
+    keynote.save()
+    flash("Konten keynote berhasil disimpan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/highlight/new", methods=["POST"])
 @admin_required
 def admin_new_highlight():
+    """Tambah sorotan acara baru pada halaman depan."""
     title = form_text("title")
     description = form_text("description")
     if not title or not description:
         flash("Judul dan deskripsi sorotan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
-    filename = save_uploaded_photo(request.files.get("image")) or ""
-    HighlightItem(title=title, description=description, image=filename,
-                  sort_order=next_sort_order(HighlightItem)).save()
+        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    HighlightItem(
+        title=title,
+        description=description,
+        sort_order=next_sort_order(HighlightItem),
+    ).save()
     flash(f"Sorotan '{title}' ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/highlight/<highlight_id>/update", methods=["POST"])
 @admin_required
 def admin_update_highlight(highlight_id):
+    """Ubah satu sorotan acara pada halaman depan."""
     item = get_or_404(HighlightItem, highlight_id)
-    title = form_text("title", item.title)
-    description = form_text("description", item.description)
-    sort_order = nonnegative_int(request.form.get("sort_order", item.sort_order))
-    if not title or not description or sort_order is None:
-        flash("Data sorotan tidak valid.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+    title = form_text("title")
+    if not title:
+        flash("Judul sorotan wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
     item.title = title
-    item.description = description
-    item.sort_order = sort_order
+    item.description = form_text("description")
+    item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.is_active = request.form.get("is_active") == "on"
-    upload = request.files.get("image")
-    if upload and upload.filename:
-        filename = save_uploaded_photo(upload)
-        if filename:
-            delete_photo_file(item.image)
-            item.image = filename
-        else:
-            flash("Gambar sorotan ditolak.", "error")
     item.save()
-    flash(f"Sorotan '{title}' diperbarui.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
-
-
-@app.route("/admin/highlight/<highlight_id>/delete", methods=["POST"])
-@admin_required
-def admin_delete_highlight(highlight_id):
-    item = get_or_404(HighlightItem, highlight_id)
-    delete_photo_file(item.image)
-    item.delete()
-    flash("Sorotan dihapus.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+    flash(f"Sorotan '{item.title}' berhasil disimpan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/agenda/new", methods=["POST"])
 @admin_required
 def admin_new_agenda():
+    """Tambah satu item jadwal baru pada agenda acara."""
     time_label = form_text("time_label")
     activity = form_text("activity")
     if not time_label or not activity:
         flash("Waktu dan aktivitas agenda wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
-    AgendaItem(time_label=time_label, activity=activity,
-               sort_order=next_sort_order(AgendaItem)).save()
+        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    AgendaItem(
+        time_label=time_label,
+        activity=activity,
+        sort_order=next_sort_order(AgendaItem),
+    ).save()
     flash("Item agenda ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/agenda/<agenda_id>/update", methods=["POST"])
 @admin_required
 def admin_update_agenda(agenda_id):
+    """Ubah satu item jadwal pada agenda acara."""
     item = get_or_404(AgendaItem, agenda_id)
-    sort_order = nonnegative_int(request.form.get("sort_order", item.sort_order))
-    item.time_label = form_text("time_label", item.time_label)
-    item.activity = form_text("activity", item.activity)
-    if not item.time_label or not item.activity or sort_order is None:
-        flash("Data agenda tidak valid.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
-    item.sort_order = sort_order
+    time_label = form_text("time_label")
+    activity = form_text("activity")
+    if not time_label or not activity:
+        flash("Waktu dan aktivitas agenda wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    item.time_label = time_label
+    item.activity = activity
+    item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.save()
-    flash("Item agenda diperbarui.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
-
-
-@app.route("/admin/agenda/<agenda_id>/delete", methods=["POST"])
-@admin_required
-def admin_delete_agenda(agenda_id):
-    get_or_404(AgendaItem, agenda_id).delete()
-    flash("Item agenda dihapus.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+    flash("Item agenda berhasil disimpan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/reason/new", methods=["POST"])
 @admin_required
 def admin_new_reason():
+    """Tambah alasan baru untuk bergabung sebagai tenant."""
     title = form_text("title")
     description = form_text("description")
     if not title or not description:
         flash("Judul dan deskripsi alasan wajib diisi.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
-    ReasonItem(title=title, description=description,
-               sort_order=next_sort_order(ReasonItem)).save()
-    flash("Alasan hadir ditambahkan.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    ReasonItem(
+        title=title,
+        description=description,
+        sort_order=next_sort_order(ReasonItem),
+    ).save()
+    flash(f"Alasan '{title}' ditambahkan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/reason/<reason_id>/update", methods=["POST"])
 @admin_required
 def admin_update_reason(reason_id):
+    """Ubah satu alasan bergabung sebagai tenant."""
     item = get_or_404(ReasonItem, reason_id)
-    item.title = form_text("title", item.title)
-    item.description = form_text("description", item.description)
-    item.sort_order = nonnegative_int(request.form.get("sort_order", item.sort_order))
-    if not item.title or not item.description or item.sort_order is None:
-        flash("Data alasan hadir tidak valid.", "error")
-        return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+    title = form_text("title")
+    if not title:
+        flash("Judul alasan wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
+    item.title = title
+    item.description = form_text("description")
+    item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.save()
-    flash("Alasan hadir diperbarui.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
-
-
-@app.route("/admin/reason/<reason_id>/delete", methods=["POST"])
-@admin_required
-def admin_delete_reason(reason_id):
-    get_or_404(ReasonItem, reason_id).delete()
-    flash("Alasan hadir dihapus.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
-
-
-@app.route("/admin/keynote/update", methods=["POST"])
-@admin_required
-def admin_update_keynote():
-    keynote = KeynoteSection.get_or_create()
-    keynote.title = form_text("title")
-    keynote.body = form_text("body")
-    keynote.save()
-    flash("Sesi keynote diperbarui.", "success")
-    return redirect(url_for("admin_dashboard", _anchor="panel-keynote"))
+    flash(f"Alasan '{item.title}' berhasil disimpan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-summit"))
 
 
 @app.route("/admin/photo/upload", methods=["POST"])

@@ -206,10 +206,14 @@ Memiliki pola yang sama dengan `BoothType`: `name`, `description`, `price`, `is_
 ### 5.4 Konten dan administrasi
 
 - `admin_users`: `username` unik dan `password_hash`.
-- `event_info`: satu dokumen untuk venue, tanggal, maps, hero, judul pembicara, dan catatan acara.
+- `event_info`: satu dokumen untuk venue, tanggal, maps, hero (eyebrow, judul, lead, video), subjudul, intro (judul/isi), judul bagian pembicara, dan catatan acara.
 - `gallery_photos`: nama file, caption, urutan, aktif/nonaktif, mode gambar, posisi x/y.
 - `speakers`: nama, institusi, topik, foto, urutan, aktif/nonaktif, posisi x/y.
 - `broadcasts`: subject, body, audience, jumlah penerima/terkirim/gagal, waktu dibuat.
+- `highlight_items`: sorotan acara pada landing page — judul, deskripsi, gambar opsional, urutan, aktif/nonaktif.
+- `agenda_items`: satu baris jadwal pada timeline acara — label waktu, aktivitas, urutan.
+- `reason_items`: alasan bergabung sebagai tenant — judul, deskripsi, urutan.
+- `keynote_sections`: satu dokumen singleton untuk judul dan isi sesi keynote pada landing page.
 
 ### 5.5 Seed default
 
@@ -289,7 +293,11 @@ Webhook idempotent terhadap email lunas: email hanya dikirim ketika transisi per
 | Scan | `GET /admin/scan`, `POST /admin/scan/verify`, `POST /admin/scan/reset/<tenant_id>` |
 | Booth | `POST /admin/booth/new`, `POST /admin/booth/<booth_id>/update` |
 | Add-on | `POST /admin/addon/new`, `POST /admin/addon/<addon_id>/update` |
-| Event | `POST /admin/event` |
+| Event | `POST /admin/event` (hero, subjudul, intro, lokasi, catatan) |
+| Keynote | `POST /admin/keynote` |
+| Sorotan acara | `POST /admin/highlight/new`, `POST /admin/highlight/<highlight_id>/update` |
+| Agenda | `POST /admin/agenda/new`, `POST /admin/agenda/<agenda_id>/update` |
+| Alasan hadir | `POST /admin/reason/new`, `POST /admin/reason/<reason_id>/update` |
 | Foto | `POST /admin/photo/upload`, update, delete |
 | Pembicara | `POST /admin/speaker/new`, update, delete |
 | Broadcast | `POST /admin/broadcast` |

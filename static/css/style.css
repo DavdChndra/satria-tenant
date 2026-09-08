@@ -592,8 +592,14 @@ section { padding: 80px 0; }
 .btn-danger:hover { background: #FEE2E2; }
 .btn-icon-danger { background: transparent; border: 1.5px solid var(--line); color: var(--ink-soft); padding: 6px 13px; font-size: 0.75rem; font-weight: 600; border-radius: 8px; cursor: pointer; font-family: 'Poppins', sans-serif; white-space: nowrap; transition: border-color 0.16s, color 0.16s, background 0.16s; }
 .btn-icon-danger:hover { border-color: #FECACA; color: var(--red); background: #FEE2E2; }
-.event-settings-form, .photo-upload-form { background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 24px; }
+.event-settings-form, .photo-upload-form { background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
 .photo-upload-form { margin-bottom: 20px; }
+.admin-content-list { margin-bottom: 36px; }
+.admin-content-list h3 { margin-bottom: 14px; }
+.admin-content-item { margin-bottom: 16px; }
+.admin-content-item .event-settings-form { margin-bottom: 10px; }
+.admin-content-item-actions { display: flex; justify-content: flex-end; }
+.admin-content-item-actions .btn-danger { width: auto; }
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
 .photo-card { background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
 .photo-card.inactive { opacity: 0.6; background: var(--cloud); }
@@ -837,9 +843,10 @@ section { padding: 80px 0; }
   .admin-shortcut-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 860px) {
-  .admin-shell { flex-direction: column; }
+  .admin-shell { flex-direction: column; align-items: stretch; }
   .admin-sidebar {
-    width: 100%; height: auto; position: static; border-right: none;
+    width: 100%; height: auto; position: sticky; top: 61px; z-index: 10;
+    background: var(--cloud); border-right: none;
     border-bottom: 1px solid var(--line); flex-direction: row;
     overflow-x: auto; padding: 10px 14px; gap: 4px;
   }

@@ -54,6 +54,36 @@
   </div>
 </section>
 
+{% if photos %}
+<section class="gallery-section">
+  <div class="wrap">
+    <div class="carousel" id="carousel" data-count="{{ photos|length }}">
+      <div class="carousel-track" id="carousel-track">
+        {% for p in photos %}
+        <figure class="carousel-slide">
+          <img src="{{ url_for('static', filename='uploads/' ~ p.filename) }}"
+               alt="{{ p.caption or 'Dokumentasi SATRIA 2026' }}" loading="lazy"
+               style="object-fit:{{ p.fit_mode or 'contain' }};object-position:{{ p.object_position }};">
+          {% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}
+        </figure>
+        {% endfor %}
+      </div>
+
+      {% if photos|length > 1 %}
+      <button class="carousel-nav prev" id="carousel-prev" type="button" aria-label="Foto sebelumnya">&#8249;</button>
+      <button class="carousel-nav next" id="carousel-next" type="button" aria-label="Foto berikutnya">&#8250;</button>
+      <div class="carousel-dots" id="carousel-dots">
+        {% for p in photos %}
+        <button type="button" class="carousel-dot {% if loop.first %}active{% endif %}"
+                data-index="{{ loop.index0 }}" aria-label="Foto {{ loop.index }}"></button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 {% if speakers %}
 <section class="bg-cloud">
   <div class="wrap">
@@ -205,4 +235,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/status-lookup.js') }}"></script>
+<script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
 {% endblock %}

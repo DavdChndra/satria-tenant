@@ -70,6 +70,12 @@ section { padding: 80px 0; }
 .hero h1 span { color: var(--orange); }
 .hero .meta { margin-top: 16px; font-size: 1.1rem; color: rgba(255,255,255,0.85); font-weight: 500; }
 .hero .meta b { color: var(--orange); }
+.hero-address { font-size: 0.95rem; font-weight: 400; }
+.hero-address a { color: var(--orange); }
+.hero-eyebrow { margin-bottom: 14px; }
+.hero-lead { margin-top: 18px; max-width: 620px; font-size: 1.05rem; line-height: 1.6; color: rgba(255,255,255,0.8); }
+.hero-note { margin-top: 22px; font-size: 0.9rem; color: rgba(255,255,255,0.65); }
+.hero-note b { color: rgba(255,255,255,0.9); font-weight: 600; }
 .hero-actions { margin-top: 30px; display: flex; gap: 14px; flex-wrap: wrap; }
 
 /* ===== BUTTONS ===== */
@@ -143,6 +149,7 @@ section { padding: 80px 0; }
 .intro { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; }
 .intro h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); margin-bottom: 18px; }
 .intro p { color: var(--ink-soft); margin-bottom: 14px; }
+.intro-subtitle { font-weight: 600; color: var(--ink) !important; margin-top: -8px; }
 .video-box {
   position: relative;
   border-radius: 16px;

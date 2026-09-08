@@ -9,12 +9,20 @@
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">
     <div class="breadcrumb"><a href="#">Acara</a> / SATRIA 2026</div>
+    {% if event_info.hero_eyebrow %}<span class="eyebrow hero-eyebrow">{{ event_info.hero_eyebrow }}</span>{% endif %}
     <h1>{{ event_info.hero_title_before or "SATRIA" }} <span>{{ event_info.hero_title_accent or "2026" }}</span>{{ event_info.hero_title_after }}</h1>
     <p class="meta">{{ event_info.event_date or "12–13 Desember 2026" }}{% if event_info.venue_name %} &nbsp;|&nbsp; <b>{{ event_info.venue_name }}</b>{% endif %}</p>
+    {% if event_info.address %}
+    <p class="meta hero-address">{{ event_info.address }}{% if event_info.maps_url %} &nbsp;&middot;&nbsp; <a href="{{ event_info.maps_url }}" target="_blank" rel="noopener">Lihat peta</a>{% endif %}</p>
+    {% endif %}
+    {% if event_info.hero_lead %}<p class="hero-lead">{{ event_info.hero_lead }}</p>{% endif %}
     <div class="hero-actions">
       <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sebagai exhibitor</a>
       <a class="btn-outline-light" href="#agenda">Lihat agenda</a>
     </div>
+    {% if event_info.hero_note %}
+    <p class="hero-note">{% if event_info.hero_note_prefix %}{{ event_info.hero_note_prefix }} {% endif %}<b>{{ event_info.hero_note }}</b></p>
+    {% endif %}
   </div>
 </section>
 
@@ -33,7 +41,8 @@
     <div>
       <span class="eyebrow">Tentang acara</span>
       <h2>{{ event_info.intro_title or "Hadiri SATRIA 2026" }}</h2>
-      <p>{{ event_info.intro_body or event_info.hero_lead or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
+      {% if event_info.subtitle %}<p class="intro-subtitle">{{ event_info.subtitle }}</p>{% endif %}
+      <p>{{ event_info.intro_body or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
     </div>
     <div class="video-box">
       {% if event_info.hero_video_url %}
@@ -114,7 +123,7 @@
       <span class="eyebrow">Agenda</span>
       <h2>{{ event_info.event_date or "Agenda acara" }}</h2>
       <h3>Yang bisa kamu harapkan</h3>
-      <p>{{ event_info.hero_lead or "Sepanjang acara, pengunjung dapat menjelajahi booth exhibitor, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung." }}</p>
+      <p>Sepanjang acara, pengunjung dapat menjelajahi booth exhibitor, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung.</p>
     </div>
     <div class="timeline">
       {% for item in agenda_items %}

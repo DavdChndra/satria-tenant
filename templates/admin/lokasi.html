@@ -1,0 +1,40 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Lokasi - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Lokasi acara</h2>
+  <p>Tampil di halaman depan. Kosongkan semua kolom bila belum ingin ditampilkan.</p>
+</div>
+
+<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+  <input type="hidden" name="section" value="lokasi">
+  <div class="field-row">
+    <div class="field">
+      <label>Nama tempat</label>
+      <input type="text" name="venue_name" value="{{ event_info.venue_name }}" placeholder="mis. Gedung Serbaguna Telkom University">
+    </div>
+    <div class="field">
+      <label>Tanggal acara</label>
+      <input type="text" name="event_date" value="{{ event_info.event_date }}" placeholder="mis. 15 - 17 Mei 2026">
+    </div>
+  </div>
+  <div class="field">
+    <label>Alamat lengkap</label>
+    <textarea name="address" rows="2" placeholder="Jalan, kota, kode pos">{{ event_info.address }}</textarea>
+  </div>
+  <div class="field">
+    <label>Tautan Google Maps</label>
+    <input type="text" name="maps_url" value="{{ event_info.maps_url }}" placeholder="https://maps.google.com/?q=...">
+    <span class="field-hint">Buka Google Maps, cari lokasinya, klik <em>Bagikan</em>, lalu salin tautannya ke sini.</span>
+  </div>
+  <div class="field">
+    <label>Catatan acara</label>
+    <textarea name="event_notes" rows="4"
+              placeholder="Satu baris satu poin, mis.:&#10;Kehadiran maksimal 1 orang per pendaftaran&#10;Registrasi ulang pukul 08.00 - 09.00">{{ event_info.event_notes }}</textarea>
+    <span class="field-hint">Tampil sebagai daftar poin di halaman pendaftaran. Satu baris = satu poin.</span>
+  </div>
+  <button type="submit" class="btn-primary btn-sm">Simpan lokasi</button>
+</form>
+
+{% endblock %}

@@ -1,313 +1,199 @@
 {% extends "base.html" %}
+{% block title %}SATRIA 2026 - Pameran Exhibitor Telkom University{% endblock %}
 {% block content %}
-<section class="reg-hero">
-  <div class="wrap hero-grid">
 
-    <div class="hero-copy">
-      {% if event_info.hero_eyebrow %}
-        <span class="eyebrow">{{ event_info.hero_eyebrow }}</span>
-        {% endif %}
-      <h1>
-          {%- if event_info.hero_title_before %}{{ event_info.hero_title_before }} {% endif -%}
-          {%- if event_info.hero_title_accent %}<span class="accent">{{ event_info.hero_title_accent }}</span>{% endif -%}
-          {%- if event_info.hero_title_after %} {{ event_info.hero_title_after }}{% endif -%}
-        </h1>
-      {% if event_info.hero_lead %}
-        <p class="lead">{{ event_info.hero_lead }}</p>
-        {% endif %}
-      <div class="hero-actions">
-        <a href="#form-pendaftaran" class="btn-primary">Daftar sekarang</a>
-        <button type="button" class="btn-outline" id="alur-open">Lihat alur pendaftaran</button>
-      </div>
-      {% if event_info.hero_note %}
-      <p class="hero-note">
-        {%- if event_info.hero_note_prefix %}{{ event_info.hero_note_prefix }} {% endif -%}
-        <strong>{{ event_info.hero_note }}</strong>.
-      </p>
-      {% endif %}
+<section class="hero" id="top">
+  {% if event_info.hero_video_url %}
+  <video class="hero-media" autoplay muted loop playsinline><source src="{{ event_info.hero_video_url }}"></video>
+  {% endif %}
+  <div class="hero-overlay"></div>
+  <div class="wrap hero-inner">
+    <div class="breadcrumb"><a href="#">Acara</a> / SATRIA 2026</div>
+    <h1>{{ event_info.hero_title_before or "SATRIA" }} <span>{{ event_info.hero_title_accent or "2026" }}</span>{{ event_info.hero_title_after }}</h1>
+    <p class="meta">{{ event_info.event_date or "12–13 Desember 2026" }}{% if event_info.venue_name %} &nbsp;|&nbsp; <b>{{ event_info.venue_name }}</b>{% endif %}</p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sebagai exhibitor</a>
+      <a class="btn-outline-light" href="#agenda">Lihat agenda</a>
     </div>
-
-    <div class="hero-preview" aria-hidden="true">
-      <div class="preview-bar">
-        <span class="preview-dots"><i></i><i></i><i></i></span>
-        <span class="preview-title">Ketersediaan Booth</span>
-      </div>
-      <div class="preview-body">
-        <span class="preview-label">Total slot tersedia</span>
-        <div class="preview-headline">
-          <span class="preview-number">{{ total_remaining }}</span>
-          {% if total_remaining > 0 %}
-          <span class="preview-tag">Pendaftaran dibuka</span>
-          {% else %}
-          <span class="preview-tag">Kuota penuh</span>
-          {% endif %}
-        </div>
-
-        {% for booth in booth_types %}
-        {% set pct = (booth.slots_remaining / booth.quota * 100) if booth.quota else 0 %}
-        <div class="preview-row">
-          <div class="preview-row-head">
-            <span class="preview-chip" style="background:{{ booth_colors[loop.index0 % 4] }}">{{ loop.index }}</span>
-            <span class="preview-row-name">{{ booth.name }}</span>
-            <span class="preview-row-value">{{ booth.slots_remaining }}/{{ booth.quota }}</span>
-          </div>
-          <div class="preview-track">
-            <div class="preview-fill" style="width:{{ pct }}%;background:{{ booth_colors[loop.index0 % 4] }}"></div>
-          </div>
-        </div>
-        {% endfor %}
-
-        <p class="preview-foot">Segera daftarkan booth Anda.</p>
-      </div>
-    </div>
-
   </div>
 </section>
 
-{% if photos %}
-<section class="gallery-section">
+<nav class="subnav" aria-label="Navigasi acara">
   <div class="wrap">
-    <div class="carousel" id="carousel" data-count="{{ photos|length }}">
-      <div class="carousel-track" id="carousel-track">
-        {% for p in photos %}
-        <figure class="carousel-slide">
-          <img src="{{ url_for('static', filename='uploads/' ~ p.filename) }}"
-               alt="{{ p.caption or 'Dokumentasi SATRIA 2026' }}" loading="lazy"
-               style="object-fit:{{ p.fit_mode or 'contain' }};object-position:{{ p.object_position }};">
-          {% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}
-        </figure>
-        {% endfor %}
-      </div>
+    <a class="active" href="#top">Beranda</a>
+    <a href="#agenda">Agenda</a>
+    <a href="#booth">Paket Booth</a>
+    <a href="#alasan">FAQ</a>
+    <a href="{{ url_for('registration_form') }}">Daftar</a>
+  </div>
+</nav>
 
-      {% if photos|length > 1 %}
-      <button class="carousel-nav prev" id="carousel-prev" type="button" aria-label="Foto sebelumnya">&#8249;</button>
-      <button class="carousel-nav next" id="carousel-next" type="button" aria-label="Foto berikutnya">&#8250;</button>
-      <div class="carousel-dots" id="carousel-dots">
-        {% for p in photos %}
-        <button type="button" class="carousel-dot {% if loop.first %}active{% endif %}"
-                data-index="{{ loop.index0 }}" aria-label="Foto {{ loop.index }}"></button>
-        {% endfor %}
-      </div>
+<section>
+  <div class="wrap intro">
+    <div>
+      <span class="eyebrow">Tentang acara</span>
+      <h2>{{ event_info.intro_title or "Hadiri SATRIA 2026" }}</h2>
+      <p>{{ event_info.intro_body or event_info.hero_lead or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
+    </div>
+    <div class="video-box">
+      {% if event_info.hero_video_url %}
+      <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"><source src="{{ event_info.hero_video_url }}"></video>
+      {% else %}
+      <div class="play-btn"></div>
       {% endif %}
     </div>
   </div>
 </section>
-{% endif %}
 
 {% if speakers %}
-<section class="speakers-section" id="pembicara">
+<section class="bg-cloud">
   <div class="wrap">
     <div class="section-head">
-      {% if event_info.speakers_eyebrow %}
-      <span class="eyebrow">{{ event_info.speakers_eyebrow }}</span>
-      {% endif %}
-      {% if event_info.speakers_title %}
-      <h2>{{ event_info.speakers_title }}</h2>
-      {% endif %}
-      {% if event_info.speakers_subtitle %}
-      <p>{{ event_info.speakers_subtitle }}</p>
-      {% endif %}
+      <span class="eyebrow">{{ event_info.speakers_eyebrow or "Pembicara" }}</span>
+      <h2>{{ event_info.speakers_title or "Pembicara utama" }}</h2>
+      {% if event_info.speakers_subtitle %}<p>{{ event_info.speakers_subtitle }}</p>{% endif %}
     </div>
-
     <div class="speaker-grid">
       {% for sp in speakers %}
-      <article class="speaker-card">
+      <div class="speaker-card">
         <div class="speaker-photo">
           {% if sp.photo %}
-          <img src="{{ url_for('static', filename='uploads/' ~ sp.photo) }}"
-               alt="{{ sp.name }}" loading="lazy"
-               style="object-position:{{ sp.object_position }};">
+          <img src="{{ url_for('static', filename='uploads/' ~ sp.photo) }}" alt="{{ sp.name }}" style="object-position:{{ sp.object_position }};">
           {% else %}
-          <span class="speaker-initials">{{ sp.initials }}</span>
+          <span>{{ sp.initials }}</span>
           {% endif %}
         </div>
-        <h3>{{ sp.name }}</h3>
-        {% if sp.institution %}<p class="speaker-inst">{{ sp.institution }}</p>{% endif %}
-        {% if sp.topic %}<p class="speaker-topic">{{ sp.topic }}</p>{% endif %}
-      </article>
+        <div class="speaker-name">{{ sp.name }}</div>
+        {% if sp.institution %}<div class="speaker-role">{{ sp.institution }}</div>{% endif %}
+        {% if sp.topic %}<div class="speaker-topic">{{ sp.topic }}</div>{% endif %}
+      </div>
       {% endfor %}
     </div>
   </div>
 </section>
 {% endif %}
 
-{% if event_info and event_info.has_content %}
-<section class="venue-section">
+{% if highlight_items %}
+<section>
   <div class="wrap">
-    <div class="venue-card">
-      <div class="venue-icon" aria-hidden="true">&#128205;</div>
-      <div class="venue-body">
-        <span class="venue-label">Lokasi acara</span>
-        {% if event_info.venue_name %}<h2>{{ event_info.venue_name }}</h2>{% endif %}
-        {% if event_info.address %}<p class="venue-address">{{ event_info.address }}</p>{% endif %}
-        {% if event_info.event_date %}
-        <p class="venue-date"><span class="venue-date-icon" aria-hidden="true">&#128197;</span>{{ event_info.event_date }}</p>
-        {% endif %}
+    <div class="section-head">
+      <span class="eyebrow">Sorotan acara</span>
+      <h2>Apa saja yang ada di SATRIA 2026</h2>
+    </div>
+    <div class="highlight-grid">
+      {% for item in highlight_items %}
+      <div class="highlight-card">
+        <div class="highlight-img">
+          {% if item.image %}<img src="{{ url_for('static', filename='uploads/' ~ item.image) }}" alt="{{ item.title }}" style="width:100%;height:100%;object-fit:cover;">{% endif %}
+        </div>
+        <div class="highlight-body">
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.description }}</p>
+        </div>
       </div>
-      {% if event_info.maps_url %}
-      <a href="{{ event_info.maps_url }}" target="_blank" rel="noopener noreferrer" class="btn-outline btn-sm venue-map-btn">
-        Lihat di peta &rarr;
-      </a>
-      {% endif %}
+      {% endfor %}
     </div>
   </div>
 </section>
 {% endif %}
 
-<section class="reg-form-section" id="form-pendaftaran">
-  <div class="wrap form-grid">
+{% if keynote_section and (keynote_section.title or keynote_section.body) %}
+<section class="keynote">
+  <div class="wrap">
+    <span class="eyebrow">Sesi pembuka</span>
+    <h2>{{ keynote_section.title }}</h2>
+    <p>{{ keynote_section.body }}</p>
+    <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sekarang</a>
+  </div>
+</section>
+{% endif %}
 
-    <form id="registration-form" class="reg-form" autocomplete="off">
-      <div class="field">
-        <label for="institution_name">Nama institusi / organisasi</label>
-        <input type="text" id="institution_name" name="institution_name" placeholder="mis. Fakultas Informatika Telkom University" required>
+<section class="bg-cloud" id="agenda">
+  <div class="wrap agenda-wrap">
+    <div>
+      <span class="eyebrow">Agenda</span>
+      <h2>{{ event_info.event_date or "Agenda acara" }}</h2>
+      <h3>Yang bisa kamu harapkan</h3>
+      <p>{{ event_info.hero_lead or "Sepanjang acara, pengunjung dapat menjelajahi booth exhibitor, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung." }}</p>
+    </div>
+    <div class="timeline">
+      {% for item in agenda_items %}
+      <div class="timeline-item">
+        <div class="timeline-time">{{ item.time_label }}</div>
+        <div class="timeline-label">{{ item.activity }}</div>
       </div>
-      <div class="field">
-        <label for="pic_name">Nama penanggung jawab (PIC)</label>
-        <input type="text" id="pic_name" name="pic_name" placeholder="Nama lengkap" required>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="nama@institusi.ac.id" required>
-        </div>
-        <div class="field">
-          <label for="phone">Nomor HP / WhatsApp</label>
-          <input type="tel" id="phone" name="phone" placeholder="08xxxxxxxxxx" required>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Jenis booth</label>
-        <div class="booth-options">
-          {% for booth in booth_types %}
-          <label class="booth-option {% if booth.slots_remaining <= 0 %}disabled{% endif %}">
-            <input type="radio" name="booth_type_id" value="{{ booth.id }}"
-                   {% if booth.slots_remaining <= 0 %}disabled{% endif %} required>
-            <div class="booth-option-body">
-              <div class="booth-option-head">
-                <span class="booth-name">{{ booth.name }}</span>
-                <span class="booth-price" data-price="{{ booth.price }}">Rp {{ "{:,}".format(booth.price).replace(",", ".") }}</span>
-              </div>
-              <p class="booth-desc">{{ booth.description }}</p>
-              <span class="booth-slots">
-                {% if booth.slots_remaining > 0 %}
-                  {{ booth.slots_remaining }} slot tersisa dari {{ booth.quota }}
-                {% else %}
-                  Kuota penuh
-                {% endif %}
-              </span>
-            </div>
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="description">Karya atau produk yang akan ditampilkan</label>
-        <textarea id="description" name="description" rows="4"
-                  placeholder="Ceritakan singkat karya, produk, riset, atau inovasi yang akan Anda pamerkan di booth."></textarea>
-        <span class="field-hint">Membantu panitia menata penempatan booth. Boleh dikosongkan.</span>
-      </div>
-
-      {% if add_ons %}
-      <div class="field">
-        <label>Opsi tambahan (opsional)</label>
-        <div class="addon-list" id="addon-list">
-          {% for addon in add_ons %}
-          <div class="addon-row" data-addon-id="{{ addon.id }}" data-addon-price="{{ addon.price }}">
-            <div class="addon-row-info">
-              <span class="addon-row-name">{{ addon.name }}</span>
-              {% if addon.description %}<span class="addon-row-desc">{{ addon.description }}</span>{% endif %}
-              <span class="addon-row-price">+Rp {{ "{:,}".format(addon.price).replace(",", ".") }}</span>
-            </div>
-            <button type="button" class="addon-toggle-btn" aria-pressed="false">Tidak diikutkan</button>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      <div class="reg-total" id="reg-total" hidden>
-        <span>Total pembayaran</span>
-        <strong id="reg-total-value">Rp 0</strong>
-      </div>
-
-      <div id="form-error" class="form-error" style="display:none;"></div>
-
-      <button type="submit" id="submit-btn" class="btn-primary btn-block">Lanjutkan ke pembayaran</button>
-    </form>
-
-    <aside class="info-card">
-      <h3 id="alur">Alur pendaftaran</h3>
-      <ol>
-        <li>Isi data institusi atau organisasi, lalu pilih jenis booth.</li>
-        <li>Klik "Lanjutkan ke pembayaran" - jendela pembayaran akan terbuka.</li>
-        <li>Selesaikan pembayaran melalui transfer bank, kartu, QRIS, atau e-wallet.</li>
-        <li>Status pendaftaran otomatis diperbarui setelah pembayaran diterima.</li>
-      </ol>
-
-      {% if event_info.notes_list %}
-      <div class="info-notes">
-        <h4>Catatan acara</h4>
-        <ul>
-          {% for note in event_info.notes_list %}
-          <li>{{ note }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-    </aside>
-
+      {% endfor %}
+    </div>
   </div>
 </section>
 
-<!-- Modal alur pendaftaran -->
-<div class="modal-overlay" id="alur-modal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="alur-modal-title">
-    <button type="button" class="modal-close" id="alur-close" aria-label="Tutup">&times;</button>
-
-    <span class="modal-eyebrow">Empat langkah</span>
-    <h2 id="alur-modal-title">Alur pendaftaran</h2>
-    <p class="modal-sub">Dari mengisi data sampai booth Anda resmi terkunci.</p>
-
-    <ol class="flow-steps">
-      <li class="flow-step">
-        <span class="flow-num">1</span>
-        <h3>Isi data</h3>
-        <p>Lengkapi data institusi atau organisasi, lalu pilih jenis booth.</p>
-      </li>
-      <li class="flow-step">
-        <span class="flow-num">2</span>
-        <h3>Bayar</h3>
-        <p>Jendela pembayaran terbuka setelah Anda menekan tombol lanjutkan.</p>
-      </li>
-      <li class="flow-step">
-        <span class="flow-num">3</span>
-        <h3>Selesaikan</h3>
-        <p>Transfer bank, kartu, QRIS, atau e-wallet - pilih yang termudah.</p>
-      </li>
-      <li class="flow-step">
-        <span class="flow-num">4</span>
-        <h3>Terkonfirmasi</h3>
-        <p>Status diperbarui otomatis dan bukti dikirim ke email Anda.</p>
-      </li>
-    </ol>
-
-    <div class="modal-actions">
-      <button type="button" class="btn-primary" id="alur-cta">Mulai daftar sekarang</button>
+<section id="booth">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Paket booth</span>
+      <h2>Pilih ruang untuk karya terbaikmu</h2>
+    </div>
+    <div class="highlight-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+      {% for booth in booth_types %}
+      {% set is_best = booth.slots_remaining == (booth_types | map(attribute='slots_remaining') | max) and booth.slots_remaining > 0 %}
+      <article class="highlight-card" style="display:flex;flex-direction:column;padding:0;">
+        <div class="highlight-body" style="flex:1;display:flex;flex-direction:column;">
+          {% if is_best %}<span class="badge-best">Paling tersedia</span>{% endif %}
+          <h3>{{ booth.name }}</h3>
+          <strong class="booth-price-big">Rp {{ "{:,}".format(booth.price).replace(',', '.') }}</strong>
+          <p>{{ booth.description }}</p>
+          <span class="booth-slots" style="margin:12px 0 auto;">{{ booth.slots_remaining }} slot tersisa dari {{ booth.quota }}</span>
+          <a class="btn-outline btn-block" href="{{ url_for('registration_form') }}?booth={{ booth.id }}" style="margin-top:16px;">Pilih booth</a>
+        </div>
+      </article>
+      {% else %}
+      <p class="empty-note">Belum ada paket booth aktif.</p>
+      {% endfor %}
     </div>
   </div>
-</div>
+</section>
+
+{% if reason_items %}
+<section id="alasan">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Kenapa perlu hadir</span>
+      <h2>Alasan bergabung sebagai exhibitor</h2>
+    </div>
+    <div class="reason-grid">
+      {% for item in reason_items %}
+      <div class="reason-card">
+        <div class="reason-num">{{ loop.index }}</div>
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="cta-strip">
+  <div class="wrap">
+    <div class="section-head"><h2>Langkah selanjutnya</h2></div>
+    <div class="cta-grid">
+      <div class="cta-card">
+        <h3>Daftar sebagai exhibitor</h3>
+        <a href="{{ url_for('registration_form') }}">Isi formulir pendaftaran →</a>
+      </div>
+      <div class="cta-card">
+        <h3>Cek status pendaftaran</h3>
+        <form id="status-lookup-form" class="status-lookup-form">
+          <input type="text" id="status-lookup-input" placeholder="Nomor pendaftaran (SATRIA26-...)" required>
+          <button type="submit">Cek status →</button>
+        </form>
+      </div>
+      <div class="cta-card"><h3>Punya pertanyaan?</h3><a href="#alasan">Lihat alasan bergabung →</a></div>
+    </div>
+  </div>
+</section>
+
 {% endblock %}
-
 {% block scripts %}
-{% if config.get('MIDTRANS_IS_PRODUCTION') %}
-<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
-{% else %}
-<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
-{% endif %}
-<script src="{{ url_for('static', filename='js/register.js') }}"></script>
-<script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/status-lookup.js') }}"></script>
 {% endblock %}

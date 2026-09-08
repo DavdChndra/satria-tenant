@@ -5,7 +5,7 @@ Konfigurasi lewat .env:
     SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM_NAME
 
 Bila SMTP_USER/SMTP_PASS kosong, seluruh fungsi di sini tidak melakukan apa-apa
-dan mengembalikan False — aplikasi tetap berjalan normal tanpa email.
+dan mengembalikan False - aplikasi tetap berjalan normal tanpa email.
 """
 import os
 import smtplib
@@ -67,13 +67,13 @@ def _rupiah(amount: int) -> str:
 
 
 def _layout(title: str, accent: str, lines_html: str, footer_note: str = "") -> str:
-    """Kerangka HTML email — gaya selaras dengan situs (crimson, Inter)."""
+    """Kerangka HTML email - gaya selaras dengan situs (crimson, Inter)."""
     return f"""\
 <div style="background:#FAFAFA;padding:28px 16px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #E8E8EC;border-radius:14px;overflow:hidden;">
     <div style="background:{accent};padding:20px 26px;">
       <div style="color:#fff;font-size:17px;font-weight:700;">SATRIA 2026</div>
-      <div style="color:rgba(255,255,255,0.85);font-size:12.5px;margin-top:2px;">Pendaftaran tenant pameran</div>
+      <div style="color:rgba(255,255,255,0.85);font-size:12.5px;margin-top:2px;">Pendaftaran exhibitor pameran</div>
     </div>
     <div style="padding:26px;">
       <h1 style="margin:0 0 14px;font-size:19px;color:#0F1115;">{title}</h1>
@@ -120,7 +120,7 @@ def send_registration_received(tenant, status_url: str) -> bool:
     text = (f"Pendaftaran diterima.\nNomor: {tenant.order_id}\n"
             f"Institusi: {tenant.institution_name}\nNominal: {_rupiah(tenant.price_at_registration)}\n"
             f"Cek status: {status_url}")
-    return send_email(tenant.email, f"Pendaftaran diterima — {tenant.order_id}",
+    return send_email(tenant.email, f"Pendaftaran diterima - {tenant.order_id}",
                       _layout("Pendaftaran Anda sudah tercatat", "#A4123A", body), text)
 
 
@@ -145,7 +145,7 @@ def send_payment_success(tenant, status_url: str) -> bool:
     text = (f"Pembayaran lunas.\nNomor: {tenant.order_id}\n"
             f"Institusi: {tenant.institution_name}\nNominal: {_rupiah(tenant.price_at_registration)}\n"
             f"Bukti: {status_url}")
-    return send_email(tenant.email, f"Pembayaran lunas — {tenant.order_id}",
+    return send_email(tenant.email, f"Pembayaran lunas - {tenant.order_id}",
                       _layout("Pembayaran berhasil", "#1F8A5B", body), text)
 
 
@@ -166,7 +166,7 @@ def send_broadcast(tenant, subject: str, message: str, status_url: str) -> bool:
 
     body = f"""
       <p style="margin:0 0 14px;font-size:14px;color:#3A3F4A;line-height:1.65;">
-        Halo <strong>{escape(tenant.pic_name)}</strong> &mdash; {escape(tenant.institution_name)},
+        Halo <strong>{escape(tenant.pic_name)}</strong> - {escape(tenant.institution_name)},
       </p>
       {paragraphs}
       {_detail_table(tenant)}

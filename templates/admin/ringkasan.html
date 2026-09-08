@@ -1,0 +1,47 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Ringkasan - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Ringkasan</h2>
+  <p>Gambaran singkat pendaftaran exhibitor SATRIA 2026.</p>
+</div>
+
+<section class="admin-stats">
+  <div class="stat-card">
+    <span class="stat-label">Total pendaftaran</span>
+    <span class="stat-value">{{ total_registrations }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Menunggu pembayaran</span>
+    <span class="stat-value">{{ total_pending }}</span>
+  </div>
+  <div class="stat-card highlight">
+    <span class="stat-label">Total uang masuk (lunas)</span>
+    <span class="stat-value">Rp {{ "{:,}".format(total_paid).replace(",", ".") }}</span>
+  </div>
+</section>
+
+<div class="admin-panel-head">
+  <h2>Pintasan</h2>
+</div>
+<div class="admin-shortcut-grid">
+  <a class="admin-shortcut-card" href="{{ url_for('admin_pendaftaran') }}">
+    <h3>Pendaftaran</h3>
+    <p>Lihat dan kelola seluruh pendaftaran exhibitor.</p>
+  </a>
+  <a class="admin-shortcut-card" href="{{ url_for('admin_summit') }}">
+    <h3>Konten summit</h3>
+    <p>Kelola intro, keynote, sorotan, agenda, dan alasan hadir.</p>
+  </a>
+  <a class="admin-shortcut-card" href="{{ url_for('admin_booth') }}">
+    <h3>Booth</h3>
+    <p>Atur harga, kuota, dan status aktif jenis booth.</p>
+  </a>
+  <a class="admin-shortcut-card" href="{{ url_for('admin_email') }}">
+    <h3>Kirim email</h3>
+    <p>Kirim pengumuman ke pendaftar.</p>
+  </a>
+</div>
+
+{% endblock %}

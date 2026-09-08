@@ -2,7 +2,7 @@
 Migrasi data dari satria.db (SQLite/versi lama) ke MongoDB Atlas.
 
 Jalankan SEKALI setelah MONGODB_URI di .env sudah benar dan bisa dikoneksi.
-Script ini tidak menghapus/mengubah satria.db — aman dijalankan berulang,
+Script ini tidak menghapus/mengubah satria.db - aman dijalankan berulang,
 tapi setiap kali dijalankan akan membuat data BARU di MongoDB (jangan
 dijalankan dua kali pada database Mongo yang sama tanpa mengosongkannya
 dulu, supaya tidak dobel).
@@ -50,7 +50,7 @@ def parse_dt(value):
 
 def main():
     if not os.path.exists(DB_PATH):
-        print(f"'{DB_PATH}' tidak ditemukan — tidak ada yang dimigrasikan.")
+        print(f"'{DB_PATH}' tidak ditemukan - tidak ada yang dimigrasikan.")
         return
 
     mongodb_uri = os.environ.get("MONGODB_URI")

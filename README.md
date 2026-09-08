@@ -1,4 +1,4 @@
-# SATRIA 2026 — Pendaftaran Tenant Pameran
+# SATRIA 2026 - Pendaftaran Tenant Pameran
 
 Aplikasi pendaftaran booth pameran dengan pembayaran terintegrasi Midtrans Snap,
 plus panel admin untuk memantau pendaftaran dan mengatur harga/kuota booth.
@@ -137,13 +137,13 @@ ngrok http 5000
 ## Catatan penting
 
 - Kuota booth (`slots_remaining`) dihitung dari jumlah pendaftaran berstatus `paid`,
-  bukan `pending` — supaya booth tidak "terkunci" oleh orang yang belum menyelesaikan
+  bukan `pending` - supaya booth tidak "terkunci" oleh orang yang belum menyelesaikan
   pembayaran. Jika ingin slot langsung terkunci begitu checkout dimulai, logika ini
   perlu disesuaikan di `models.py` (`BoothType.slots_taken`).
 - Harga yang dibayar tenant adalah snapshot (`price_at_registration`) saat pendaftaran
-  dibuat — jika admin mengubah harga booth setelahnya, pendaftaran yang sudah ada
+  dibuat - jika admin mengubah harga booth setelahnya, pendaftaran yang sudah ada
   tidak terpengaruh.
 - Database memakai MongoDB (Atlas), diakses lewat ODM MongoEngine. Berkas
-  `satria.db` (SQLite) yang lama sudah tidak dipakai aplikasi — disimpan hanya
+  `satria.db` (SQLite) yang lama sudah tidak dipakai aplikasi - disimpan hanya
   sebagai sumber data untuk `migrate_to_mongo.py`, aman dihapus setelah migrasi
   dipastikan berhasil.

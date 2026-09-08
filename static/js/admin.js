@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const note = card.querySelector(".pos-note");
     if (note) {
       if (!canX && !canY) {
-        note.textContent = "Gambar sudah pas dengan bingkai — tidak ada bagian yang bisa digeser.";
+        note.textContent = "Gambar sudah pas dengan bingkai - tidak ada bagian yang bisa digeser.";
         note.hidden = false;
       } else if (!canX) {
         note.textContent = "Gambar ini hanya bisa digeser atas–bawah.";
@@ -110,34 +110,4 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (preview.complete) refreshSp(); else preview.addEventListener("load", refreshSp);
   });
-
-  /* ---- navbar admin: tandai bagian yang sedang dilihat ---- */
-  const links = Array.from(document.querySelectorAll(".admin-nav-link"));
-  if (!links.length) return;
-
-  const targets = links
-    .map(function (a) {
-      const el = document.querySelector(a.getAttribute("href"));
-      return el ? { link: a, el: el } : null;
-    })
-    .filter(Boolean);
-
-  function markActive() {
-    // Bagian aktif = yang paling dekat di atas garis 140px dari puncak layar
-    let current = targets[0];
-    targets.forEach(function (t) {
-      if (t.el.getBoundingClientRect().top <= 140) current = t;
-    });
-    links.forEach(function (a) { a.classList.remove("is-active"); });
-    if (current) current.link.classList.add("is-active");
-  }
-
-  let ticking = false;
-  window.addEventListener("scroll", function () {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(function () { markActive(); ticking = false; });
-  }, { passive: true });
-
-  markActive();
 });

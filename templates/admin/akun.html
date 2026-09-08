@@ -1,0 +1,29 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Akun - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Ubah password</h2>
+  <p>Masukkan password lama untuk mengonfirmasi identitas sebelum mengganti dengan yang baru.</p>
+</div>
+
+<form class="event-settings-form" method="POST" action="{{ url_for('admin_change_password') }}">
+  <div class="field">
+    <label for="old_password">Password lama</label>
+    <input type="password" id="old_password" name="old_password" autocomplete="current-password" required>
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label for="new_password">Password baru</label>
+      <input type="password" id="new_password" name="new_password" autocomplete="new-password" minlength="8" required>
+    </div>
+    <div class="field">
+      <label for="new_password_confirm">Konfirmasi password baru</label>
+      <input type="password" id="new_password_confirm" name="new_password_confirm" autocomplete="new-password" minlength="8" required>
+    </div>
+  </div>
+  <span class="field-hint">Minimal 8 karakter.</span>
+  <button type="submit" class="btn-primary btn-sm">Simpan password</button>
+</form>
+
+{% endblock %}

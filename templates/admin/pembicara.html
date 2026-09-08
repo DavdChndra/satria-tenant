@@ -1,0 +1,137 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Pembicara - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Pembicara acara</h2>
+  <p>Tampil di halaman depan. Urutan kecil tampil lebih dulu.</p>
+</div>
+
+<form class="speaker-head-form" method="POST" action="{{ url_for('admin_update_event') }}">
+  <input type="hidden" name="section" value="pembicara">
+  <h3>Judul bagian</h3>
+  <div class="field-row">
+    <div class="field">
+      <label>Label kecil</label>
+      <input type="text" name="speakers_eyebrow" value="{{ event_info.speakers_eyebrow or '' }}"
+             placeholder="mis. Narasumber">
+    </div>
+    <div class="field">
+      <label>Judul</label>
+      <input type="text" name="speakers_title" value="{{ event_info.speakers_title or '' }}"
+             placeholder="mis. Pembicara acara">
+    </div>
+  </div>
+  <div class="field">
+    <label>Kalimat pendukung</label>
+    <input type="text" name="speakers_subtitle" value="{{ event_info.speakers_subtitle or '' }}"
+           placeholder="mis. Menghadirkan praktisi dan akademisi di bidangnya.">
+    <span class="field-hint">Kosongkan salah satu bila tidak ingin ditampilkan.</span>
+  </div>
+  <button type="submit" class="btn-outline btn-sm">Simpan judul</button>
+</form>
+
+<form class="speaker-new-form" method="POST" enctype="multipart/form-data"
+      action="{{ url_for('admin_new_speaker') }}">
+  <h3>Tambah pembicara</h3>
+  <div class="field-row">
+    <div class="field">
+      <label>Nama</label>
+      <input type="text" name="name" placeholder="mis. Dr. Andi Wijaya" required>
+    </div>
+    <div class="field">
+      <label>Instansi</label>
+      <input type="text" name="institution" placeholder="mis. Institut Teknologi Bandung">
+    </div>
+  </div>
+  <div class="field">
+    <label>Topik pembahasan</label>
+    <input type="text" name="topic" placeholder="mis. Penerapan AI pada pendidikan tinggi">
+  </div>
+  <div class="field">
+    <label>Foto (opsional)</label>
+    <input type="file" name="photo" accept="image/*">
+    <span class="field-hint">Foto persegi paling rapi. Bila kosong, ditampilkan inisial nama.</span>
+  </div>
+  <button type="submit" class="btn-primary btn-sm">Tambah pembicara</button>
+</form>
+
+{% if speakers %}
+<div class="speaker-admin-grid">
+  {% for sp in speakers %}
+  <div class="speaker-admin-card {% if not sp.is_active %}inactive{% endif %}">
+    <form method="POST" enctype="multipart/form-data"
+          action="{{ url_for('admin_update_speaker', speaker_id=sp.id) }}">
+      <div class="speaker-admin-head">
+        <div class="speaker-admin-photo">
+          {% if sp.photo %}
+          <img src="{{ url_for('static', filename='uploads/' ~ sp.photo) }}" alt="{{ sp.name }}"
+               class="sp-preview" style="object-position:{{ sp.object_position }};">
+          {% else %}
+          <span>{{ sp.initials }}</span>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label>Ganti foto</label>
+          <input type="file" name="photo" accept="image/*">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Nama</label>
+        <input type="text" name="name" value="{{ sp.name }}" required>
+      </div>
+      <div class="field">
+        <label>Instansi</label>
+        <input type="text" name="institution" value="{{ sp.institution }}">
+      </div>
+      <div class="field">
+        <label>Topik</label>
+        <input type="text" name="topic" value="{{ sp.topic }}">
+      </div>
+
+      {% if sp.photo %}
+      <div class="field adjust-box sp-adjust">
+        <label>Posisi foto</label>
+        <div class="pos-row">
+          <span class="pos-label">Kiri - kanan</span>
+          <input type="range" name="pos_x" min="0" max="100" step="1"
+                 value="{{ sp.pos_x if sp.pos_x is not none else 50 }}" class="pos-slider">
+          <output class="pos-value">{{ sp.pos_x if sp.pos_x is not none else 50 }}%</output>
+        </div>
+        <div class="pos-row">
+          <span class="pos-label">Atas - bawah</span>
+          <input type="range" name="pos_y" min="0" max="100" step="1"
+                 value="{{ sp.pos_y if sp.pos_y is not none else 50 }}" class="pos-slider">
+          <output class="pos-value">{{ sp.pos_y if sp.pos_y is not none else 50 }}%</output>
+        </div>
+        <span class="field-hint">Geser untuk menempatkan wajah di tengah bingkai.</span>
+        <span class="field-hint pos-note" hidden></span>
+      </div>
+      {% endif %}
+      <div class="field-row">
+        <div class="field">
+          <label>Urutan</label>
+          <input type="number" name="sort_order" value="{{ sp.sort_order }}" min="0">
+        </div>
+        <div class="field photo-active-field">
+          <label class="checkbox-label">
+            <input type="checkbox" name="is_active" {% if sp.is_active %}checked{% endif %}>
+            Tampilkan
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn-outline btn-sm">Simpan</button>
+    </form>
+    <form method="POST" action="{{ url_for('admin_delete_speaker', speaker_id=sp.id) }}"
+          onsubmit="return confirm('Hapus pembicara ini?');">
+      <button type="submit" class="btn-danger btn-sm">Hapus</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty-note">Belum ada pembicara. Tambahkan agar bagian ini muncul di halaman depan.</p>
+{% endif %}
+
+{% endblock %}

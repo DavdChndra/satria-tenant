@@ -1,0 +1,55 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Tambahan - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Opsi tambahan pendaftaran</h2>
+  <p>Mis. makan malam (dinner) atau cetak poster. Pendaftar memilihnya sendiri di form pendaftaran; harganya otomatis ditambahkan ke total sebelum dibayar.</p>
+</div>
+
+<div class="booth-settings-grid">
+  {% for addon in add_ons %}
+  <form class="booth-settings-card" method="POST" action="{{ url_for('admin_update_addon', addon_id=addon.id) }}">
+    <div class="field">
+      <label>Nama opsi</label>
+      <input type="text" name="name" value="{{ addon.name }}" required>
+    </div>
+    <div class="field">
+      <label>Deskripsi</label>
+      <textarea name="description" rows="2">{{ addon.description }}</textarea>
+    </div>
+    <div class="field">
+      <label>Harga (Rp)</label>
+      <input type="number" name="price" value="{{ addon.price }}" min="0" step="1000" required>
+    </div>
+    <div class="field-inline">
+      <label class="checkbox-label">
+        <input type="checkbox" name="is_active" {% if addon.is_active %}checked{% endif %}>
+        Tawarkan opsi ini di form pendaftaran
+      </label>
+    </div>
+    <button type="submit" class="btn-outline btn-sm">Simpan perubahan</button>
+  </form>
+  {% else %}
+  <p class="empty-note">Belum ada opsi tambahan.</p>
+  {% endfor %}
+
+  <form class="booth-settings-card booth-new" method="POST" action="{{ url_for('admin_new_addon') }}">
+    <h3>Tambah opsi baru</h3>
+    <div class="field">
+      <label>Nama opsi</label>
+      <input type="text" name="name" placeholder="mis. Cetak poster" required>
+    </div>
+    <div class="field">
+      <label>Deskripsi</label>
+      <textarea name="description" rows="2" placeholder="Deskripsi singkat opsi ini"></textarea>
+    </div>
+    <div class="field">
+      <label>Harga (Rp)</label>
+      <input type="number" name="price" min="0" step="1000" required>
+    </div>
+    <button type="submit" class="btn-primary btn-sm">Tambah opsi</button>
+  </form>
+</div>
+
+{% endblock %}

@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login admin — SATRIA 2026</title>
+<title>Login admin - SATRIA 2026</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Logo AILO Squared.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="admin-login-body">
 <div class="admin-login-card">
-  <div class="brand"><div class="brand-mark"><span>S</span></div>SATRIA 2026</div>
+  <div class="brand"><img class="brand-mark" src="{{ url_for('static', filename='img/Logo AILO Squared.png') }}" alt="AILO">SATRIA 2026</div>
   <h1>Login admin</h1>
   <p class="admin-login-sub">Masuk untuk mengelola pendaftaran tenant.</p>
   {% with messages = get_flashed_messages(with_categories=true) %}

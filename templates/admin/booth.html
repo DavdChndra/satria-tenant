@@ -1,0 +1,66 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Booth - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head">
+  <h2>Pengaturan jenis booth</h2>
+  <p>Ubah harga, kuota, atau nonaktifkan jenis booth. Perubahan langsung berlaku di halaman pendaftaran.</p>
+</div>
+
+<div class="booth-settings-grid">
+  {% for booth in booth_types %}
+  <form class="booth-settings-card" method="POST" action="{{ url_for('admin_update_booth', booth_id=booth.id) }}">
+    <div class="field">
+      <label>Nama booth</label>
+      <input type="text" name="name" value="{{ booth.name }}" required>
+    </div>
+    <div class="field">
+      <label>Deskripsi</label>
+      <textarea name="description" rows="2">{{ booth.description }}</textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Harga (Rp)</label>
+        <input type="number" name="price" value="{{ booth.price }}" min="0" step="1000" required>
+      </div>
+      <div class="field">
+        <label>Kuota</label>
+        <input type="number" name="quota" value="{{ booth.quota }}" min="0" required>
+      </div>
+    </div>
+    <div class="field-inline">
+      <label class="checkbox-label">
+        <input type="checkbox" name="is_active" {% if booth.is_active %}checked{% endif %}>
+        Aktifkan booth ini
+      </label>
+      <span class="booth-slots-admin">{{ booth.slots_taken }}/{{ booth.quota }} terisi</span>
+    </div>
+    <button type="submit" class="btn-outline btn-sm">Simpan perubahan</button>
+  </form>
+  {% endfor %}
+
+  <form class="booth-settings-card booth-new" method="POST" action="{{ url_for('admin_new_booth') }}">
+    <h3>Tambah jenis booth baru</h3>
+    <div class="field">
+      <label>Nama booth</label>
+      <input type="text" name="name" placeholder="mis. Booth komunitas" required>
+    </div>
+    <div class="field">
+      <label>Deskripsi</label>
+      <textarea name="description" rows="2" placeholder="Deskripsi singkat fasilitas"></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Harga (Rp)</label>
+        <input type="number" name="price" min="0" step="1000" required>
+      </div>
+      <div class="field">
+        <label>Kuota</label>
+        <input type="number" name="quota" min="0" required>
+      </div>
+    </div>
+    <button type="submit" class="btn-primary btn-sm">Tambah booth</button>
+  </form>
+</div>
+
+{% endblock %}

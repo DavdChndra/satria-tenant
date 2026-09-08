@@ -4,6 +4,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const errorBox = document.getElementById("form-error");
   const totalBox = document.getElementById("reg-total");
   const totalValue = document.getElementById("reg-total-value");
+  const summaryEmpty = document.getElementById("reg-summary-empty");
+  const summaryBody = document.getElementById("reg-summary-body");
+  const summaryBooth = document.getElementById("reg-summary-booth");
+  const summaryAddonRow = document.getElementById("reg-summary-addon-row");
+  const summaryAddons = document.getElementById("reg-summary-addons");
+  const summaryTotal = document.getElementById("reg-summary-total");
 
   function showError(message) {
     errorBox.textContent = message;
@@ -33,21 +39,44 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateTotal() {
-    if (!totalBox) return;
     const boothInput = form.querySelector('input[name="booth_type_id"]:checked');
     if (!boothInput) {
-      totalBox.hidden = true;
+      if (totalBox) totalBox.hidden = true;
+      if (summaryEmpty) summaryEmpty.hidden = false;
+      if (summaryBody) summaryBody.hidden = true;
       return;
     }
-    const boothPrice = parseInt(boothInput.closest(".booth-option").querySelector(".booth-price").dataset.price || "0", 10);
+    const boothOption = boothInput.closest(".booth-option");
+    const boothPrice = parseInt(boothOption.querySelector(".booth-price").dataset.price || "0", 10);
+    const boothName = boothOption.querySelector(".booth-name").textContent;
+
+    const selectedAddonNames = [];
     let total = boothPrice;
     addonRows.forEach(function (row) {
       if (row.querySelector(".addon-toggle-btn").getAttribute("aria-pressed") === "true") {
         total += parseInt(row.dataset.addonPrice || "0", 10);
+        const name = row.querySelector(".addon-row-name");
+        if (name) selectedAddonNames.push(name.textContent);
       }
     });
-    totalValue.textContent = formatRupiah(total);
-    totalBox.hidden = false;
+
+    if (totalBox) {
+      totalValue.textContent = formatRupiah(total);
+      totalBox.hidden = false;
+    }
+
+    if (summaryBody) {
+      summaryEmpty.hidden = true;
+      summaryBody.hidden = false;
+      summaryBooth.textContent = boothName;
+      if (selectedAddonNames.length) {
+        summaryAddonRow.hidden = false;
+        summaryAddons.textContent = selectedAddonNames.join(", ");
+      } else {
+        summaryAddonRow.hidden = true;
+      }
+      summaryTotal.textContent = formatRupiah(total);
+    }
   }
 
   form.querySelectorAll('input[name="booth_type_id"]').forEach(function (radio) {
@@ -118,8 +147,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       window.snap.pay(data.snap_token, {
-        onSuccess: function () {
-          window.location.href = "/status/" + data.order_id;
+        onSuccess: async function () {
+          await goToTicketWhenPaid(data.order_id);
         },
         onPending: function () {
           window.location.href = "/status/" + data.order_id;
@@ -129,7 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
           setLoading(false);
         },
         onClose: function () {
-          setLoading(false);
+          window.location.href = "/status/" + data.order_id;
         },
       });
     } catch (err) {
@@ -137,4 +166,22 @@ document.addEventListener("DOMContentLoaded", function () {
       setLoading(false);
     }
   });
+
+  async function goToTicketWhenPaid(orderId) {
+    const ticketUrl = "/ticket/" + orderId;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        const res = await fetch("/api/payment/" + orderId + "/confirm", { method: "POST" });
+        const data = await res.json();
+        if (res.ok && data.paid) {
+          window.location.href = ticketUrl;
+          return;
+        }
+      } catch (err) {
+        // Continue retrying while the Midtrans notification is being processed.
+      }
+      await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+    }
+    window.location.href = "/status/" + orderId;
+  }
 });

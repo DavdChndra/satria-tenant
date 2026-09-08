@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Daftar sebagai tenant - SATRIA 2026{% endblock %}
+{% block title %}Daftar sebagai exhibitor - SATRIA 2026{% endblock %}
 {% block content %}
 
 <section class="reg-page-head">
   <div class="wrap">
-    <div class="breadcrumb"><a href="{{ url_for('index') }}">Beranda</a> / Daftar tenant</div>
+    <div class="breadcrumb"><a href="{{ url_for('index') }}">Beranda</a> / Daftar exhibitor</div>
     <h1>Amankan booth-mu</h1>
     <p>Lengkapi data berikut, lalu lanjutkan ke pembayaran.</p>
   </div>
@@ -37,7 +37,7 @@
           {% endfor %}
         </div>
       </div>
-      <div class="field"><label for="description">Karya atau produk yang akan ditampilkan</label><textarea id="description" name="description" rows="4" maxlength="2000"></textarea></div>
+      <div class="field"><label for="description">Karya atau produk yang akan ditampilkan</label><textarea id="description" name="description" rows="3" maxlength="2000"></textarea></div>
       {% if add_ons %}
       <div class="field">
         <label>Opsi tambahan</label>

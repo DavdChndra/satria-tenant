@@ -73,7 +73,7 @@ def _layout(title: str, accent: str, lines_html: str, footer_note: str = "") -> 
   <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #E8E8EC;border-radius:14px;overflow:hidden;">
     <div style="background:{accent};padding:20px 26px;">
       <div style="color:#fff;font-size:17px;font-weight:700;">SATRIA 2026</div>
-      <div style="color:rgba(255,255,255,0.85);font-size:12.5px;margin-top:2px;">Pendaftaran tenant pameran</div>
+      <div style="color:rgba(255,255,255,0.85);font-size:12.5px;margin-top:2px;">Pendaftaran exhibitor pameran</div>
     </div>
     <div style="padding:26px;">
       <h1 style="margin:0 0 14px;font-size:19px;color:#0F1115;">{title}</h1>

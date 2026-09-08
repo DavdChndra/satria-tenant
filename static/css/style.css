@@ -329,11 +329,11 @@ section { padding: 80px 0; }
 }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-.booth-options { display: flex; flex-direction: column; gap: 10px; }
+.booth-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .booth-option {
-  display: flex; gap: 12px;
+  display: flex; gap: 10px;
   border: 1.5px solid var(--line); border-radius: 11px;
-  padding: 16px 18px; cursor: pointer; background: #fff;
+  padding: 14px 16px; cursor: pointer; background: #fff;
   transition: border-color 0.16s, background 0.16s;
 }
 .booth-option:hover { border-color: var(--teal); background: var(--teal-tint); }
@@ -342,11 +342,11 @@ section { padding: 80px 0; }
 .booth-option.disabled:hover { border-color: var(--line); background: #fff; }
 .booth-option input[type="radio"] { margin-top: 4px; flex-shrink: 0; accent-color: var(--teal-dark); }
 .booth-option-body { flex: 1; }
-.booth-option-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; gap: 12px; }
-.booth-name { font-weight: 700; font-size: 0.92rem; }
-.booth-price { font-weight: 700; color: var(--teal-dark); font-size: 0.95rem; white-space: nowrap; }
-.booth-desc { font-size: 0.82rem; color: var(--ink-soft); margin-bottom: 5px; }
-.booth-slots { font-size: 0.78rem; color: var(--ink-soft); }
+.booth-option-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+.booth-name { font-weight: 700; font-size: 0.9rem; line-height: 1.3; }
+.booth-price { font-weight: 700; color: var(--teal-dark); font-size: 0.92rem; }
+.booth-desc { font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 5px; line-height: 1.45; }
+.booth-slots { font-size: 0.76rem; color: var(--ink-soft); }
 
 .addon-list { display: flex; flex-direction: column; gap: 10px; }
 .addon-row {
@@ -785,6 +785,7 @@ section { padding: 80px 0; }
 @media (max-width: 760px) {
   .form-grid { grid-template-columns: 1fr; }
   .hero-title-row { grid-template-columns: 1fr; }
+  .booth-options { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .speaker-grid, .highlight-grid, .booth-grid, .cta-grid { grid-template-columns: 1fr; }

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}SATRIA 2026 - Pameran Tenant Telkom University{% endblock %}
+{% block title %}SATRIA 2026 - Pameran Exhibitor Telkom University{% endblock %}
 {% block content %}
 
 <section class="hero" id="top">
@@ -12,7 +12,7 @@
     <h1>{{ event_info.hero_title_before or "SATRIA" }} <span>{{ event_info.hero_title_accent or "2026" }}</span>{{ event_info.hero_title_after }}</h1>
     <p class="meta">{{ event_info.event_date or "12–13 Desember 2026" }}{% if event_info.venue_name %} &nbsp;|&nbsp; <b>{{ event_info.venue_name }}</b>{% endif %}</p>
     <div class="hero-actions">
-      <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sebagai tenant</a>
+      <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sebagai exhibitor</a>
       <a class="btn-outline-light" href="#agenda">Lihat agenda</a>
     </div>
   </div>
@@ -33,7 +33,7 @@
     <div>
       <span class="eyebrow">Tentang acara</span>
       <h2>{{ event_info.intro_title or "Hadiri SATRIA 2026" }}</h2>
-      <p>{{ event_info.intro_body or event_info.hero_lead or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan tenant, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
+      <p>{{ event_info.intro_body or event_info.hero_lead or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
     </div>
     <div class="video-box">
       {% if event_info.hero_video_url %}
@@ -114,7 +114,7 @@
       <span class="eyebrow">Agenda</span>
       <h2>{{ event_info.event_date or "Agenda acara" }}</h2>
       <h3>Yang bisa kamu harapkan</h3>
-      <p>{{ event_info.hero_lead or "Sepanjang acara, pengunjung dapat menjelajahi booth tenant, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung." }}</p>
+      <p>{{ event_info.hero_lead or "Sepanjang acara, pengunjung dapat menjelajahi booth exhibitor, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung." }}</p>
     </div>
     <div class="timeline">
       {% for item in agenda_items %}
@@ -158,7 +158,7 @@
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Kenapa perlu hadir</span>
-      <h2>Alasan bergabung sebagai tenant</h2>
+      <h2>Alasan bergabung sebagai exhibitor</h2>
     </div>
     <div class="reason-grid">
       {% for item in reason_items %}
@@ -178,7 +178,7 @@
     <div class="section-head"><h2>Langkah selanjutnya</h2></div>
     <div class="cta-grid">
       <div class="cta-card">
-        <h3>Daftar sebagai tenant</h3>
+        <h3>Daftar sebagai exhibitor</h3>
         <a href="{{ url_for('registration_form') }}">Isi formulir pendaftaran →</a>
       </div>
       <div class="cta-card">

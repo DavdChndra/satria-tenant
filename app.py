@@ -190,7 +190,7 @@ def seed_defaults():
               description="Poster A1 dicetak panitia dan dipasang di area booth Anda.",
               price=40000, sort_order=2).save()
     if HighlightItem.objects.count() == 0:
-        HighlightItem(title="50+ Tenant",
+        HighlightItem(title="50+ Exhibitor",
                       description="Booth UMKM, komunitas, dan startup kampus dalam satu area pameran.",
                       sort_order=1).save()
         HighlightItem(title="Panggung Talkshow",
@@ -214,7 +214,7 @@ def seed_defaults():
                   description="Booth kamu terlihat langsung oleh pengunjung kampus dan komunitas sekitar.",
                   sort_order=1).save()
         ReasonItem(title="Bangun relasi baru",
-                  description="Bertemu tenant lain, komunitas, dan calon pelanggan dalam satu tempat.",
+                  description="Bertemu exhibitor lain, komunitas, dan calon pelanggan dalam satu tempat.",
                   sort_order=2).save()
         ReasonItem(title="Proses pendaftaran mudah",
                   description="Daftar dan bayar online, pantau status kapan saja lewat halaman status.",
@@ -222,7 +222,7 @@ def seed_defaults():
     if KeynoteSection.objects.count() == 0:
         KeynoteSection(
             title="Membangun masa depan kewirausahaan kampus",
-            body="Sesi pembuka SATRIA 2026 mengangkat cerita nyata dari tenant-tenant yang "
+            body="Sesi pembuka SATRIA 2026 mengangkat cerita nyata dari exhibitor-exhibitor yang "
                  "tumbuh dari booth kecil di kampus menjadi bisnis yang berkelanjutan. Panitia "
                  "mengundang seluruh peserta untuk hadir sejak sesi pertama.",
         ).save()

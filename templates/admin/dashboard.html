@@ -30,6 +30,7 @@
     <a href="#panel-ringkasan" class="admin-nav-link">Ringkasan</a>
     <a href="#panel-hero" class="admin-nav-link">Sambutan</a>
     <a href="#panel-lokasi" class="admin-nav-link">Lokasi</a>
+    <a href="#panel-summit" class="admin-nav-link">Konten summit</a>
     <a href="#panel-foto" class="admin-nav-link">Foto</a>
     <a href="#panel-pembicara" class="admin-nav-link">Pembicara</a>
     <a href="#panel-booth" class="admin-nav-link">Booth</a>
@@ -723,6 +724,55 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</section>
+
+<section class="admin-panel" id="panel-summit">
+  <div class="admin-panel-head">
+    <h2>Konten summit</h2>
+    <p>Kelola intro, video hero, keynote, sorotan acara, agenda, dan alasan hadir yang tampil di halaman depan.</p>
+  </div>
+
+  <form class="event-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+    <div class="field-row">
+      <div class="field"><label for="subtitle">Subjudul hero</label><input id="subtitle" name="subtitle" value="{{ event_info.subtitle or '' }}"></div>
+      <div class="field"><label for="hero_video_url">URL video hero</label><input id="hero_video_url" name="hero_video_url" value="{{ event_info.hero_video_url or '' }}"></div>
+    </div>
+    <div class="field"><label for="intro_title">Judul intro</label><input id="intro_title" name="intro_title" value="{{ event_info.intro_title or '' }}"></div>
+    <div class="field"><label for="intro_body">Isi intro</label><textarea id="intro_body" name="intro_body" rows="4">{{ event_info.intro_body or '' }}</textarea></div>
+    <button type="submit" class="btn-primary btn-sm">Simpan intro</button>
+  </form>
+
+  <form class="event-settings-form" method="POST" action="{{ url_for('admin_update_keynote') }}">
+    <h3>Keynote</h3>
+    <div class="field"><label for="keynote-title">Judul</label><input id="keynote-title" name="title" value="{{ keynote_section.title or '' }}"></div>
+    <div class="field"><label for="keynote-body">Isi</label><textarea id="keynote-body" name="body" rows="4">{{ keynote_section.body or '' }}</textarea></div>
+    <button type="submit" class="btn-primary btn-sm">Simpan keynote</button>
+  </form>
+
+  <div class="admin-content-list">
+    <h3>Sorotan acara</h3>
+    {% for item in highlight_items %}
+    <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_highlight', highlight_id=item.id) }}">
+      <div class="field-row"><div class="field"><label>Judul</label><input name="title" value="{{ item.title }}"></div><div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div></div>
+      <div class="field"><label>Deskripsi</label><textarea name="description" rows="2">{{ item.description }}</textarea></div>
+      <label class="checkbox-label"><input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Tampilkan</label>
+      <button type="submit" class="btn-primary btn-sm">Simpan sorotan</button>
+    </form>
+    {% endfor %}
+    <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_new_highlight') }}"><div class="field-row"><div class="field"><label>Judul baru</label><input name="title" required></div><div class="field"><label>Deskripsi baru</label><input name="description" required></div></div><button type="submit" class="btn-outline btn-sm">Tambah sorotan</button></form>
+  </div>
+
+  <div class="admin-content-list">
+    <h3>Agenda</h3>
+    {% for item in agenda_items %}<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_agenda', agenda_id=item.id) }}"><div class="field-row"><div class="field"><label>Waktu</label><input name="time_label" value="{{ item.time_label }}"></div><div class="field"><label>Aktivitas</label><input name="activity" value="{{ item.activity }}"></div><div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div></div><button type="submit" class="btn-primary btn-sm">Simpan agenda</button></form>{% endfor %}
+    <form class="event-settings-form" method="POST" action="{{ url_for('admin_new_agenda') }}"><div class="field-row"><div class="field"><label>Waktu baru</label><input name="time_label" required></div><div class="field"><label>Aktivitas baru</label><input name="activity" required></div></div><button type="submit" class="btn-outline btn-sm">Tambah agenda</button></form>
+  </div>
+
+  <div class="admin-content-list">
+    <h3>Alasan hadir</h3>
+    {% for item in reason_items %}<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_reason', reason_id=item.id) }}"><div class="field-row"><div class="field"><label>Judul</label><input name="title" value="{{ item.title }}"></div><div class="field"><label>Deskripsi</label><input name="description" value="{{ item.description }}"></div><div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div></div><button type="submit" class="btn-primary btn-sm">Simpan alasan</button></form>{% endfor %}
+    <form class="event-settings-form" method="POST" action="{{ url_for('admin_new_reason') }}"><div class="field-row"><div class="field"><label>Judul baru</label><input name="title" required></div><div class="field"><label>Deskripsi baru</label><input name="description" required></div></div><button type="submit" class="btn-outline btn-sm">Tambah alasan</button></form>
   </div>
 </section>
 

@@ -15,7 +15,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from models import (BoothType, Tenant, AdminUser, EventInfo,
-                    GalleryPhoto, Broadcast, Speaker, AddOn, SelectedAddOn)
+                    GalleryPhoto, Broadcast, Speaker, AddOn, SelectedAddOn,
+                    HighlightItem, AgendaItem, ReasonItem, KeynoteSection)
 from midtrans_service import (create_transaction, verify_notification_signature,
                               map_transaction_status, get_transaction_status)
 from email_service import (send_registration_received, send_payment_success,
@@ -155,6 +156,44 @@ def seed_defaults():
             event_date="15 - 17 Mei 2026",
             maps_url="https://maps.google.com/?q=Telkom+University+Bandung",
         ).save()
+    if HighlightItem.objects.count() == 0:
+        HighlightItem(title="50+ Tenant",
+                      description="Booth UMKM, komunitas, dan startup kampus dalam satu area pameran.",
+                      sort_order=1).save()
+        HighlightItem(title="Panggung Talkshow",
+                      description="Diskusi kewirausahaan bersama praktisi dan alumni.",
+                      sort_order=2).save()
+        HighlightItem(title="Zona Komunitas",
+                      description="Ruang kolaborasi antar organisasi dan UKM kampus.",
+                      sort_order=3).save()
+        HighlightItem(title="Hiburan Panggung",
+                      description="Penampilan musik dan pertunjukan mahasiswa sepanjang acara.",
+                      sort_order=4).save()
+    if AgendaItem.objects.count() == 0:
+        agenda_defaults = [
+            ("08.00", "Registrasi dan pembukaan booth"),
+            ("09.30", "Sesi pembuka dan sambutan panitia"),
+            ("11.00", "Talkshow kewirausahaan"),
+            ("12.30", "Istirahat dan jejaring"),
+            ("13.30", "Sesi komunitas dan hiburan panggung"),
+            ("17.00", "Booth ditutup"),
+        ]
+        for order, (time_label, activity) in enumerate(agenda_defaults, start=1):
+            AgendaItem(time_label=time_label, activity=activity, sort_order=order).save()
+    if ReasonItem.objects.count() == 0:
+        reason_defaults = [
+            ("Jangkau ratusan pengunjung", "Booth Anda terlihat langsung oleh pengunjung kampus dan komunitas sekitar."),
+            ("Bangun relasi baru", "Bertemu tenant lain, komunitas, dan calon pelanggan dalam satu tempat."),
+            ("Proses pendaftaran mudah", "Daftar dan bayar online, lalu pantau status kapan saja."),
+        ]
+        for order, (title, description) in enumerate(reason_defaults, start=1):
+            ReasonItem(title=title, description=description, sort_order=order).save()
+    if KeynoteSection.objects.count() == 0:
+        KeynoteSection(
+            title="Membangun masa depan kewirausahaan kampus",
+            body=("Sesi pembuka SATRIA 2026 mengangkat cerita nyata dari tenant-tenant "
+                  "yang tumbuh dari booth kecil di kampus menjadi bisnis yang berkelanjutan."),
+        ).save()
     if AdminUser.objects.count() == 0:
         AdminUser(
             username="admin",
@@ -177,11 +216,18 @@ def index():
     photos = GalleryPhoto.objects(is_active=True).order_by("sort_order", "id")
     speakers = Speaker.objects(is_active=True).order_by("sort_order", "id")
     add_ons = AddOn.objects(is_active=True).order_by("sort_order", "id")
+    highlights = HighlightItem.objects(is_active=True).order_by("sort_order", "id")
+    agenda_items = AgendaItem.objects.order_by("sort_order", "id")
+    reason_items = ReasonItem.objects.order_by("sort_order", "id")
     return render_template("index.html",
                            booth_types=booth_types,
                            photos=photos,
                            speakers=speakers,
                            add_ons=add_ons,
+                           highlight_items=highlights,
+                           agenda_items=agenda_items,
+                           reason_items=reason_items,
+                           keynote_section=KeynoteSection.get_or_create(),
                            event_info=EventInfo.get_or_create(),
                            total_remaining=sum(b.slots_remaining for b in booth_types),
                            booth_colors=BOOTH_COLORS)
@@ -507,6 +553,10 @@ def admin_dashboard():
         photos=photos,
         speakers=speakers,
         add_ons=add_ons,
+        highlight_items=HighlightItem.objects.order_by("sort_order", "id"),
+        agenda_items=AgendaItem.objects.order_by("sort_order", "id"),
+        reason_items=ReasonItem.objects.order_by("sort_order", "id"),
+        keynote_section=KeynoteSection.get_or_create(),
         broadcasts=broadcasts,
         email_ready=email_is_configured(),
         count_all=len(tenants),
@@ -758,8 +808,10 @@ def admin_update_event():
     info.maps_url = maps_url
 
     for field in ("hero_eyebrow", "hero_title_before", "hero_title_accent",
-                  "hero_title_after", "hero_lead", "hero_note", "hero_note_prefix"):
-        setattr(info, field, request.form.get(field, "").strip())
+                  "hero_title_after", "hero_lead", "hero_video_url", "subtitle",
+                  "hero_note", "hero_note_prefix", "intro_title", "intro_body"):
+        if field in request.form:
+            setattr(info, field, request.form.get(field, "").strip())
 
     info.speakers_eyebrow = request.form.get("speakers_eyebrow", "").strip()
     info.speakers_title = request.form.get("speakers_title", "").strip()
@@ -770,6 +822,144 @@ def admin_update_event():
     info.save()
     flash("Informasi lokasi acara berhasil disimpan.", "success")
     return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/highlight/new", methods=["POST"])
+@admin_required
+def admin_new_highlight():
+    title = form_text("title")
+    description = form_text("description")
+    if not title or not description:
+        flash("Judul dan deskripsi sorotan wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+    filename = save_uploaded_photo(request.files.get("image")) or ""
+    HighlightItem(title=title, description=description, image=filename,
+                  sort_order=next_sort_order(HighlightItem)).save()
+    flash(f"Sorotan '{title}' ditambahkan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+
+
+@app.route("/admin/highlight/<highlight_id>/update", methods=["POST"])
+@admin_required
+def admin_update_highlight(highlight_id):
+    item = get_or_404(HighlightItem, highlight_id)
+    title = form_text("title", item.title)
+    description = form_text("description", item.description)
+    sort_order = nonnegative_int(request.form.get("sort_order", item.sort_order))
+    if not title or not description or sort_order is None:
+        flash("Data sorotan tidak valid.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+    item.title = title
+    item.description = description
+    item.sort_order = sort_order
+    item.is_active = request.form.get("is_active") == "on"
+    upload = request.files.get("image")
+    if upload and upload.filename:
+        filename = save_uploaded_photo(upload)
+        if filename:
+            delete_photo_file(item.image)
+            item.image = filename
+        else:
+            flash("Gambar sorotan ditolak.", "error")
+    item.save()
+    flash(f"Sorotan '{title}' diperbarui.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+
+
+@app.route("/admin/highlight/<highlight_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_highlight(highlight_id):
+    item = get_or_404(HighlightItem, highlight_id)
+    delete_photo_file(item.image)
+    item.delete()
+    flash("Sorotan dihapus.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-sorotan"))
+
+
+@app.route("/admin/agenda/new", methods=["POST"])
+@admin_required
+def admin_new_agenda():
+    time_label = form_text("time_label")
+    activity = form_text("activity")
+    if not time_label or not activity:
+        flash("Waktu dan aktivitas agenda wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+    AgendaItem(time_label=time_label, activity=activity,
+               sort_order=next_sort_order(AgendaItem)).save()
+    flash("Item agenda ditambahkan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+
+
+@app.route("/admin/agenda/<agenda_id>/update", methods=["POST"])
+@admin_required
+def admin_update_agenda(agenda_id):
+    item = get_or_404(AgendaItem, agenda_id)
+    sort_order = nonnegative_int(request.form.get("sort_order", item.sort_order))
+    item.time_label = form_text("time_label", item.time_label)
+    item.activity = form_text("activity", item.activity)
+    if not item.time_label or not item.activity or sort_order is None:
+        flash("Data agenda tidak valid.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+    item.sort_order = sort_order
+    item.save()
+    flash("Item agenda diperbarui.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+
+
+@app.route("/admin/agenda/<agenda_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_agenda(agenda_id):
+    get_or_404(AgendaItem, agenda_id).delete()
+    flash("Item agenda dihapus.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-agenda"))
+
+
+@app.route("/admin/reason/new", methods=["POST"])
+@admin_required
+def admin_new_reason():
+    title = form_text("title")
+    description = form_text("description")
+    if not title or not description:
+        flash("Judul dan deskripsi alasan wajib diisi.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+    ReasonItem(title=title, description=description,
+               sort_order=next_sort_order(ReasonItem)).save()
+    flash("Alasan hadir ditambahkan.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+
+
+@app.route("/admin/reason/<reason_id>/update", methods=["POST"])
+@admin_required
+def admin_update_reason(reason_id):
+    item = get_or_404(ReasonItem, reason_id)
+    item.title = form_text("title", item.title)
+    item.description = form_text("description", item.description)
+    item.sort_order = nonnegative_int(request.form.get("sort_order", item.sort_order))
+    if not item.title or not item.description or item.sort_order is None:
+        flash("Data alasan hadir tidak valid.", "error")
+        return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+    item.save()
+    flash("Alasan hadir diperbarui.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+
+
+@app.route("/admin/reason/<reason_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_reason(reason_id):
+    get_or_404(ReasonItem, reason_id).delete()
+    flash("Alasan hadir dihapus.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-reason"))
+
+
+@app.route("/admin/keynote/update", methods=["POST"])
+@admin_required
+def admin_update_keynote():
+    keynote = KeynoteSection.get_or_create()
+    keynote.title = form_text("title")
+    keynote.body = form_text("body")
+    keynote.save()
+    flash("Sesi keynote diperbarui.", "success")
+    return redirect(url_for("admin_dashboard", _anchor="panel-keynote"))
 
 
 @app.route("/admin/photo/upload", methods=["POST"])

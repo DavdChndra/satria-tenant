@@ -193,8 +193,13 @@ class EventInfo(me.Document):
         default="Daftarkan booth untuk menampilkan karya, riset, dan inovasi "
                 "Anda di hadapan pengunjung SATRIA 2026. Slot terbatas sesuai "
                 "kuota masing-masing jenis booth.")
+    hero_video_url = me.StringField(max_length=500, default="")
+    subtitle = me.StringField(max_length=240, default="")
     hero_note = me.StringField(max_length=200, default="PT Nusa Inspira Teknologi")
     hero_note_prefix = me.StringField(max_length=80, default="In collaboration with")
+
+    intro_title = me.StringField(max_length=200, default="Hadiri SATRIA 2026")
+    intro_body = me.StringField(default="")
 
     # Judul bagian pembicara di halaman depan
     speakers_eyebrow = me.StringField(max_length=60, default="Narasumber")
@@ -304,3 +309,55 @@ class Speaker(me.Document):
         """Inisial nama, dipakai bila pembicara belum punya foto."""
         parts = [p for p in (self.name or "").split() if p[:1].isalpha()]
         return "".join(p[0].upper() for p in parts[:2]) or "?"
+
+
+class HighlightItem(me.Document):
+    """Sorotan utama yang ditampilkan pada landing page acara."""
+    meta = {"collection": "highlight_items"}
+
+    title = me.StringField(max_length=150, required=True)
+    description = me.StringField(max_length=500, required=True)
+    image = me.StringField(max_length=255, default="")
+    sort_order = me.IntField(default=0)
+    is_active = me.BooleanField(default=True)
+    created_at = me.DateTimeField(default=datetime.utcnow)
+
+
+class AgendaItem(me.Document):
+    """Satu item jadwal pada timeline acara."""
+    meta = {"collection": "agenda_items"}
+
+    time_label = me.StringField(max_length=40, required=True)
+    activity = me.StringField(max_length=200, required=True)
+    sort_order = me.IntField(default=0)
+    created_at = me.DateTimeField(default=datetime.utcnow)
+
+
+class ReasonItem(me.Document):
+    """Alasan pengunjung atau tenant bergabung dengan acara."""
+    meta = {"collection": "reason_items"}
+
+    title = me.StringField(max_length=150, required=True)
+    description = me.StringField(max_length=500, required=True)
+    sort_order = me.IntField(default=0)
+    created_at = me.DateTimeField(default=datetime.utcnow)
+
+
+class KeynoteSection(me.Document):
+    """Konten keynote singleton pada landing page."""
+    meta = {"collection": "keynote_sections"}
+
+    title = me.StringField(max_length=200, default="")
+    body = me.StringField(default="")
+    updated_at = me.DateTimeField(default=datetime.utcnow)
+
+    def save(self, *args, **kwargs):
+        self.updated_at = datetime.utcnow()
+        return super().save(*args, **kwargs)
+
+    @staticmethod
+    def get_or_create():
+        keynote = KeynoteSection.objects.first()
+        if keynote is None:
+            keynote = KeynoteSection().save()
+        return keynote

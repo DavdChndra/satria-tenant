@@ -14,7 +14,7 @@
   --red: #C1123F;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { overflow-x: hidden; }
+html { overflow-x: hidden; }
 body {
   font-family: 'Poppins', sans-serif;
   color: var(--ink);

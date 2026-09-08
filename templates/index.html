@@ -63,16 +63,16 @@
 </section>
 
 {% if speakers %}
-<section class="speakers-section">
+<section class="bg-cloud">
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">{{ event_info.speakers_eyebrow or "Pembicara" }}</span>
       <h2>{{ event_info.speakers_title or "Pembicara utama" }}</h2>
       {% if event_info.speakers_subtitle %}<p>{{ event_info.speakers_subtitle }}</p>{% endif %}
     </div>
-    <div class="speaker-grid {% if speakers|length <= 2 %}speaker-grid-featured{% endif %}">
+    <div class="speaker-grid">
       {% for sp in speakers %}
-      <div class="speaker-card {% if speakers|length <= 2 %}speaker-card-featured{% endif %}">
+      <div class="speaker-card">
         <div class="speaker-photo">
           {% if sp.photo %}
           <img src="{{ url_for('static', filename='uploads/' ~ sp.photo) }}" alt="{{ sp.name }}" style="object-position:{{ sp.object_position }};">
@@ -80,11 +80,9 @@
           <span>{{ sp.initials }}</span>
           {% endif %}
         </div>
-        <div class="speaker-info">
-          <div class="speaker-name">{{ sp.name }}</div>
-          {% if sp.institution %}<div class="speaker-role">{{ sp.institution }}</div>{% endif %}
-          {% if sp.topic %}<div class="speaker-topic">{{ sp.topic }}</div>{% endif %}
-        </div>
+        <div class="speaker-name">{{ sp.name }}</div>
+        {% if sp.institution %}<div class="speaker-role">{{ sp.institution }}</div>{% endif %}
+        {% if sp.topic %}<div class="speaker-topic">{{ sp.topic }}</div>{% endif %}
       </div>
       {% endfor %}
     </div>

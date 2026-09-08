@@ -489,12 +489,9 @@ section { padding: 80px 0; }
   border: 1.5px solid var(--line); border-top: 3px solid var(--teal);
 }
 .admin-login-card .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.95rem; margin-bottom: 22px; justify-content: center; }
-.admin-login-card .brand img { height: 32px; }
 .brand-mark {
   flex: none; width: 30px; height: 30px; border-radius: 9px;
-  background: linear-gradient(135deg, var(--orange), var(--teal));
-  color: #fff; display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 0.95rem; line-height: 1;
+  object-fit: contain; background: #fff; border: 1px solid var(--line);
 }
 .admin-login-card h1 { font-size: 1.2rem; margin-bottom: 4px; text-align: center; }
 .admin-login-sub { font-size: 0.82rem; color: var(--ink-soft); text-align: center; margin-bottom: 22px; }
@@ -509,7 +506,6 @@ section { padding: 80px 0; }
 }
 .admin-header-inner { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; }
 .admin-header .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.95rem; }
-.admin-header .brand img { height: 30px; }
 .admin-header-actions { display: flex; align-items: center; gap: 18px; }
 .admin-header-link { font-size: 0.82rem; font-weight: 500; color: var(--ink-soft); }
 .admin-header-link:hover { color: var(--teal-dark); }
@@ -673,7 +669,6 @@ section { padding: 80px 0; }
 .id-card { max-width: 620px; margin: 0 auto; background: #fff; border: 1.5px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 18px 50px rgba(10,10,10,0.10); }
 .id-card-top { background: var(--ink); color: #fff; padding: 16px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .id-card-top .brand { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; }
-.id-card-top .brand img { height: 26px; opacity: 0.9; }
 .id-card-badge { background: var(--orange); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 5px 12px; border-radius: 999px; letter-spacing: 0.03em; }
 .id-card-body { display: flex; gap: 26px; padding: 26px 22px; align-items: flex-start; }
 .id-card-info { flex: 1; min-width: 0; }

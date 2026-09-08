@@ -76,6 +76,15 @@
         <ul>{% for note in event_info.notes_list %}<li>{{ note }}</li>{% endfor %}</ul>
       </div>
       {% endif %}
+      <div class="info-summary" id="reg-summary">
+        <h4>Ringkasan pesanan</h4>
+        <p class="info-summary-empty" id="reg-summary-empty">Pilih jenis booth untuk melihat ringkasan biaya.</p>
+        <div id="reg-summary-body" hidden>
+          <div class="info-summary-row"><span>Booth</span><strong id="reg-summary-booth">-</strong></div>
+          <div class="info-summary-row" id="reg-summary-addon-row" hidden><span>Opsi tambahan</span><strong id="reg-summary-addons">-</strong></div>
+          <div class="info-summary-total"><span>Total</span><strong id="reg-summary-total">Rp 0</strong></div>
+        </div>
+      </div>
     </aside>
   </div>
 </section>

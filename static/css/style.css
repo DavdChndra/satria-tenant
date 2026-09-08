@@ -55,6 +55,14 @@ section { padding: 80px 0; }
   width: 100%; height: 100%;
   object-fit: cover; opacity: 0.55;
 }
+.hero-photo-bg { position: absolute; inset: 0; }
+.hero-photo-slide {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.hero-photo-slide.active { opacity: 0.55; }
 .hero-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(10,10,10,0.12), rgba(10,10,10,0.88));
@@ -734,20 +742,6 @@ section { padding: 80px 0; }
 .scan-time { font-size: 0.75rem; color: var(--ink); font-weight: 600; margin-top: 6px; }
 .scan-hint-bad { color: var(--red); font-weight: 500; }
 
-/* ===== CAROUSEL ===== */
-.gallery-section { padding: 0 0 8px; }
-.carousel { position: relative; overflow: hidden; border-radius: 14px; background: transparent; border: 1.5px solid var(--line); }
-.carousel-track { display: flex; transition: transform 0.5s ease; }
-.carousel-slide { position: relative; min-width: 100%; margin: 0; aspect-ratio: 24/7; max-height: 300px; background: transparent; }
-.carousel-slide img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.carousel-slide figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 36px 24px 18px; color: #fff; font-size: 0.88rem; font-weight: 500; background: linear-gradient(to top, rgba(10,10,10,0.85), rgba(10,10,10,0)); }
-.carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; background: rgba(255,255,255,0.9); color: var(--ink); font-size: 1.5rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-.carousel-nav:hover { background: #fff; }
-.carousel-nav.prev { left: 14px; }
-.carousel-nav.next { right: 14px; }
-.carousel-dots { position: absolute; bottom: 14px; left: 0; right: 0; display: flex; justify-content: center; gap: 7px; }
-.carousel-dot { width: 8px; height: 8px; border-radius: 50%; border: none; cursor: pointer; padding: 0; background: rgba(255,255,255,0.45); transition: background 0.2s, width 0.2s; }
-.carousel-dot.active { background: var(--orange); width: 22px; border-radius: 4px; }
 
 /* ===== VENUE ===== */
 .venue-section { padding: 28px 0 0; }
@@ -833,7 +827,6 @@ section { padding: 80px 0; }
   .scan-grid { grid-template-columns: 1fr; }
   .id-card-body { flex-direction: column; align-items: center; text-align: center; }
   .id-meta { justify-content: center; }
-  .carousel-slide { aspect-ratio: 16/9; max-height: 220px; }
   .venue-card { flex-direction: column; align-items: flex-start; gap: 14px; }
   .flow-steps { grid-template-columns: repeat(2, 1fr); gap: 22px 18px; }
   .flow-step:nth-child(2)::after { display: none; }

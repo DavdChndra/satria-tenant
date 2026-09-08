@@ -5,6 +5,14 @@
 <section class="hero" id="top">
   {% if event_info.hero_video_url %}
   <video class="hero-media" autoplay muted loop playsinline><source src="{{ event_info.hero_video_url }}"></video>
+  {% elif photos %}
+  <div class="hero-photo-bg" id="hero-photo-bg" data-count="{{ photos|length }}">
+    {% for p in photos %}
+    <img class="hero-photo-slide{% if loop.first %} active{% endif %}"
+         src="{{ url_for('static', filename='uploads/' ~ p.filename) }}" alt=""
+         style="object-position:{{ p.object_position }};" loading="{% if loop.first %}eager{% else %}lazy{% endif %}">
+    {% endfor %}
+  </div>
   {% endif %}
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">
@@ -53,36 +61,6 @@
     </div>
   </div>
 </section>
-
-{% if photos %}
-<section class="gallery-section">
-  <div class="wrap">
-    <div class="carousel" id="carousel" data-count="{{ photos|length }}">
-      <div class="carousel-track" id="carousel-track">
-        {% for p in photos %}
-        <figure class="carousel-slide">
-          <img src="{{ url_for('static', filename='uploads/' ~ p.filename) }}"
-               alt="{{ p.caption or 'Dokumentasi SATRIA 2026' }}" loading="lazy"
-               style="object-fit:{{ p.fit_mode or 'contain' }};object-position:{{ p.object_position }};">
-          {% if p.caption %}<figcaption>{{ p.caption }}</figcaption>{% endif %}
-        </figure>
-        {% endfor %}
-      </div>
-
-      {% if photos|length > 1 %}
-      <button class="carousel-nav prev" id="carousel-prev" type="button" aria-label="Foto sebelumnya">&#8249;</button>
-      <button class="carousel-nav next" id="carousel-next" type="button" aria-label="Foto berikutnya">&#8250;</button>
-      <div class="carousel-dots" id="carousel-dots">
-        {% for p in photos %}
-        <button type="button" class="carousel-dot {% if loop.first %}active{% endif %}"
-                data-index="{{ loop.index0 }}" aria-label="Foto {{ loop.index }}"></button>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-</section>
-{% endif %}
 
 {% if speakers %}
 <section class="bg-cloud">

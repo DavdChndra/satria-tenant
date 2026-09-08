@@ -14,7 +14,11 @@
   --red: #C1123F;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { overflow-x: hidden; }
+html { overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+html::-webkit-scrollbar { width: 10px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; border: 2px solid #fff; }
+html::-webkit-scrollbar-thumb:hover { background: #c8d2d5; }
 body {
   font-family: 'Poppins', sans-serif;
   color: var(--ink);

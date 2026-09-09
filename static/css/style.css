@@ -202,6 +202,14 @@ section { padding: 80px 0; }
 .speaker-topic { color: var(--teal-dark); font-size: 0.82rem; margin-top: 4px; }
 
 /* ===== HIGHLIGHTS ===== */
+.highlights-section { position: relative; }
+.highlights-with-bg { background-size: cover; background-position: center; padding-top: 100px; padding-bottom: 100px; }
+.highlights-with-bg .wrap { position: relative; }
+.highlights-with-bg .section-head h2 { color: #fff; }
+.highlights-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(10,10,10,0.55), rgba(10,10,10,0.85));
+}
 .highlight-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
 .highlight-card {
   border: 1.5px solid var(--line);

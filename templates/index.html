@@ -86,7 +86,9 @@
 {% endif %}
 
 {% if highlight_items %}
-<section>
+<section class="highlights-section{% if event_info.highlights_bg %} highlights-with-bg{% endif %}"
+  {% if event_info.highlights_bg %}style="background-image:url('{{ url_for('static', filename='uploads/' ~ event_info.highlights_bg) }}');"{% endif %}>
+  {% if event_info.highlights_bg %}<div class="highlights-overlay"></div>{% endif %}
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Sorotan acara</span>

@@ -206,26 +206,23 @@ section { padding: 80px 0; }
 .highlights-with-bg { background-size: cover; background-position: center; padding-top: 100px; padding-bottom: 100px; }
 .highlights-with-bg .wrap { position: relative; }
 .highlights-with-bg .section-head h2 { color: #fff; }
+.highlights-with-bg .highlight-body h3 { color: #fff; }
+.highlights-with-bg .highlight-body p { color: rgba(255,255,255,0.7); }
 .highlights-overlay {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(10,10,10,0.55), rgba(10,10,10,0.85));
 }
 .highlight-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
-.highlight-card {
-  border: 1.5px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-  transition: border-color 0.15s, transform 0.15s;
-}
-.highlight-card:hover { border-color: var(--teal); transform: translateY(-3px); }
+.highlight-card { transition: transform 0.15s; }
+.highlight-card:hover { transform: translateY(-3px); }
 .highlight-img {
   aspect-ratio: 16/10;
+  border-radius: 12px;
   background: linear-gradient(135deg, var(--orange), var(--teal));
   overflow: hidden;
 }
 .highlight-img img { width: 100%; height: 100%; object-fit: cover; }
-.highlight-body { padding: 18px 20px; }
+.highlight-body { padding: 16px 4px 0; }
 .highlight-body h3 { font-size: 1rem; margin-bottom: 8px; }
 .highlight-body p { font-size: 0.86rem; color: var(--ink-soft); }
 

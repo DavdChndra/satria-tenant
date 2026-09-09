@@ -957,6 +957,16 @@ def admin_update_event():
         if field in request.form:
             setattr(info, field, request.form.get(field, "").strip())
 
+    upload = request.files.get("intro_image")
+    if upload and upload.filename:
+        filename = save_uploaded_photo(upload)
+        if filename:
+            delete_photo_file(info.intro_image)
+            info.intro_image = filename
+    elif request.form.get("remove_intro_image") == "1":
+        delete_photo_file(info.intro_image)
+        info.intro_image = ""
+
     if "speakers_eyebrow" in request.form:
         info.speakers_eyebrow = request.form.get("speakers_eyebrow", "").strip()
     if "speakers_title" in request.form:

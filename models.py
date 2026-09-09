@@ -200,6 +200,7 @@ class EventInfo(me.Document):
 
     intro_title = me.StringField(max_length=200, default="Hadiri SATRIA 2026")
     intro_body = me.StringField(default="")
+    intro_image = me.StringField(max_length=255, default="")
 
     # Judul bagian pembicara di halaman depan
     speakers_eyebrow = me.StringField(max_length=60, default="Narasumber")

@@ -7,7 +7,7 @@
   <p>Kelola intro, video hero, keynote, sorotan acara, agenda, dan alasan hadir yang tampil di halaman depan.</p>
 </div>
 
-<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+<form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_event') }}">
   <input type="hidden" name="section" value="summit">
   <h3>Intro</h3>
   <div class="field-row">
@@ -16,6 +16,17 @@
   </div>
   <div class="field"><label for="intro_title">Judul intro</label><input type="text" id="intro_title" name="intro_title" value="{{ event_info.intro_title or '' }}"></div>
   <div class="field"><label for="intro_body">Isi intro</label><textarea id="intro_body" name="intro_body" rows="4">{{ event_info.intro_body or '' }}</textarea></div>
+  <div class="field">
+    <label for="intro_image">Gambar intro</label>
+    {% if event_info.intro_image %}
+    <div class="photo-thumb" style="max-width:220px;margin-bottom:10px;">
+      <img src="{{ url_for('static', filename='uploads/' ~ event_info.intro_image) }}" alt="Gambar intro" style="width:100%;height:100%;object-fit:cover;">
+    </div>
+    <label class="checkbox-label"><input type="checkbox" name="remove_intro_image" value="1"> Hapus gambar ini</label>
+    {% endif %}
+    <input type="file" id="intro_image" name="intro_image" accept="image/*">
+    <span class="field-hint">Menggantikan kotak video di sebelah teks intro. JPG, PNG, WEBP, atau GIF.</span>
+  </div>
   <button type="submit" class="btn-primary btn-sm">Simpan intro</button>
 </form>
 

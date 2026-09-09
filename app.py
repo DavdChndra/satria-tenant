@@ -1007,6 +1007,7 @@ def admin_new_highlight():
     HighlightItem(
         title=title,
         description=description,
+        image=save_uploaded_photo(request.files.get("image")) or "",
         sort_order=next_sort_order(HighlightItem),
     ).save()
     flash(f"Sorotan '{title}' ditambahkan.", "success")
@@ -1026,6 +1027,17 @@ def admin_update_highlight(highlight_id):
     item.description = form_text("description")
     item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.is_active = request.form.get("is_active") == "on"
+
+    upload = request.files.get("image")
+    if upload and upload.filename:
+        filename = save_uploaded_photo(upload)
+        if filename:
+            delete_photo_file(item.image)
+            item.image = filename
+    elif request.form.get("remove_image") == "1":
+        delete_photo_file(item.image)
+        item.image = ""
+
     item.save()
     flash(f"Sorotan '{item.title}' berhasil disimpan.", "success")
     return redirect(url_for("admin_summit"))
@@ -1036,6 +1048,7 @@ def admin_update_highlight(highlight_id):
 def admin_delete_highlight(highlight_id):
     """Hapus satu sorotan acara."""
     item = get_or_404(HighlightItem, highlight_id)
+    delete_photo_file(item.image)
     item.delete()
     flash("Sorotan dihapus.", "success")
     return redirect(url_for("admin_summit"))

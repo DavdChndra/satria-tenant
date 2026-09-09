@@ -44,22 +44,15 @@
   </div>
 </nav>
 
-<section>
+<section class="intro-section{% if event_info.intro_image %} intro-with-bg{% endif %}"
+  {% if event_info.intro_image %}style="background-image:url('{{ url_for('static', filename='uploads/' ~ event_info.intro_image) }}');"{% endif %}>
+  {% if event_info.intro_image %}<div class="intro-overlay"></div>{% endif %}
   <div class="wrap intro">
-    <div>
+    <div class="intro-text">
       <span class="eyebrow">Tentang acara</span>
       <h2>{{ event_info.intro_title or "Hadiri SATRIA 2026" }}</h2>
       {% if event_info.subtitle %}<p class="intro-subtitle">{{ event_info.subtitle }}</p>{% endif %}
       <p>{{ event_info.intro_body or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
-    </div>
-    <div class="video-box">
-      {% if event_info.intro_image %}
-      <img src="{{ url_for('static', filename='uploads/' ~ event_info.intro_image) }}" alt="" style="width:100%;height:100%;object-fit:cover;">
-      {% elif event_info.hero_video_url %}
-      <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"><source src="{{ event_info.hero_video_url }}"></video>
-      {% else %}
-      <div class="play-btn"></div>
-      {% endif %}
     </div>
   </div>
 </section>

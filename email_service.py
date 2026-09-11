@@ -91,7 +91,7 @@ def _detail_table(tenant) -> str:
         ("Nomor pendaftaran", tenant.order_id),
         ("Institusi", tenant.institution_name),
         ("Penanggung jawab", tenant.pic_name),
-        ("Jenis booth", tenant.booth_type.name if tenant.booth_type else "-"),
+        ("Paket Showcase", tenant.booth_type.name if tenant.booth_type else "-"),
         ("Nominal", _rupiah(tenant.price_at_registration)),
     ]
     cells = "".join(
@@ -108,8 +108,8 @@ def send_registration_received(tenant, status_url: str) -> bool:
     """Dikirim tepat setelah pendaftaran dibuat (pembayaran belum selesai)."""
     body = f"""
       <p style="margin:0 0 6px;font-size:14px;color:#3A3F4A;line-height:1.65;">
-        Halo <strong>{tenant.pic_name}</strong>, pendaftaran booth Anda sudah kami terima.
-        Selesaikan pembayaran agar slot booth Anda terkunci.
+        Halo <strong>{tenant.pic_name}</strong>, pendaftaran Showcase Anda sudah kami terima.
+        Selesaikan pembayaran agar slot Showcase Anda terkunci.
       </p>
       {_detail_table(tenant)}
       <a href="{status_url}" style="display:inline-block;background:#A4123A;color:#fff;text-decoration:none;
@@ -133,7 +133,7 @@ def send_payment_success(tenant, status_url: str) -> bool:
       </div>
       <p style="margin:0 0 6px;font-size:14px;color:#3A3F4A;line-height:1.65;">
         Terima kasih, <strong>{tenant.pic_name}</strong>. Pembayaran Anda sudah kami terima
-        dan slot booth Anda resmi terkunci.
+        dan slot Showcase Anda resmi terkunci.
       </p>
       {_detail_table(tenant)}
       <a href="{status_url}" style="display:inline-block;background:#1F8A5B;color:#fff;text-decoration:none;
@@ -146,6 +146,68 @@ def send_payment_success(tenant, status_url: str) -> bool:
             f"Institusi: {tenant.institution_name}\nNominal: {_rupiah(tenant.price_at_registration)}\n"
             f"Bukti: {status_url}")
     return send_email(tenant.email, f"Pembayaran lunas - {tenant.order_id}",
+                      _layout("Pembayaran berhasil", "#1F8A5B", body), text)
+
+
+def _detail_table_participant(participant) -> str:
+    rows = [
+        ("Nomor pendaftaran", participant.order_id),
+        ("Nama peserta", participant.full_name),
+        ("Paket peserta", participant.participant_type.name if participant.participant_type else "-"),
+        ("Nominal", _rupiah(participant.price_at_registration)),
+    ]
+    cells = "".join(
+        f'<tr>'
+        f'<td style="padding:7px 0;color:#6B7280;font-size:13px;">{k}</td>'
+        f'<td style="padding:7px 0;color:#0F1115;font-size:13px;font-weight:600;text-align:right;">{v}</td>'
+        f'</tr>'
+        for k, v in rows
+    )
+    return f'<table style="width:100%;border-collapse:collapse;margin:6px 0 18px;">{cells}</table>'
+
+
+def send_participant_registration_received(participant, status_url: str) -> bool:
+    """Dikirim tepat setelah pendaftaran peserta dibuat (pembayaran belum selesai)."""
+    body = f"""
+      <p style="margin:0 0 6px;font-size:14px;color:#3A3F4A;line-height:1.65;">
+        Halo <strong>{participant.full_name}</strong>, pendaftaran peserta Anda sudah kami terima.
+        Selesaikan pembayaran agar pendaftaran Anda terkunci.
+      </p>
+      {_detail_table_participant(participant)}
+      <a href="{status_url}" style="display:inline-block;background:#A4123A;color:#fff;text-decoration:none;
+         padding:12px 22px;border-radius:9px;font-size:14px;font-weight:600;">Lihat status pendaftaran</a>
+      <p style="margin:18px 0 0;font-size:12.5px;color:#6B7280;line-height:1.6;">
+        Simpan nomor pendaftaran <strong>{participant.order_id}</strong> sebagai rujukan.
+      </p>"""
+    text = (f"Pendaftaran diterima.\nNomor: {participant.order_id}\n"
+            f"Nama: {participant.full_name}\nNominal: {_rupiah(participant.price_at_registration)}\n"
+            f"Cek status: {status_url}")
+    return send_email(participant.email, f"Pendaftaran diterima - {participant.order_id}",
+                      _layout("Pendaftaran Anda sudah tercatat", "#A4123A", body), text)
+
+
+def send_participant_payment_success(participant, status_url: str) -> bool:
+    """Dikirim saat webhook Midtrans mengonfirmasi pembayaran peserta lunas."""
+    body = f"""
+      <div style="display:inline-block;background:#EFF9F3;color:#1F8A5B;border:1px solid #BFE3D0;
+           padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:700;margin-bottom:14px;">
+        Pembayaran lunas
+      </div>
+      <p style="margin:0 0 6px;font-size:14px;color:#3A3F4A;line-height:1.65;">
+        Terima kasih, <strong>{participant.full_name}</strong>. Pembayaran Anda sudah kami terima
+        dan pendaftaran Anda resmi terkunci.
+      </p>
+      {_detail_table_participant(participant)}
+      <a href="{status_url}" style="display:inline-block;background:#1F8A5B;color:#fff;text-decoration:none;
+         padding:12px 22px;border-radius:9px;font-size:14px;font-weight:600;">Lihat bukti pendaftaran</a>
+      <p style="margin:18px 0 0;font-size:12.5px;color:#6B7280;line-height:1.6;">
+        Email ini berlaku sebagai bukti pembayaran. Informasi teknis pelaksanaan
+        akan kami kirim menjelang acara.
+      </p>"""
+    text = (f"Pembayaran lunas.\nNomor: {participant.order_id}\n"
+            f"Nama: {participant.full_name}\nNominal: {_rupiah(participant.price_at_registration)}\n"
+            f"Bukti: {status_url}")
+    return send_email(participant.email, f"Pembayaran lunas - {participant.order_id}",
                       _layout("Pembayaran berhasil", "#1F8A5B", body), text)
 
 

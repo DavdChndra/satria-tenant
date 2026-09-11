@@ -5,7 +5,7 @@
 <section class="reg-page-head">
   <div class="wrap">
     <div class="breadcrumb"><a href="{{ url_for('index') }}">Beranda</a> / Daftar exhibitor</div>
-    <h1>Amankan booth-mu</h1>
+    <h1>Amankan Showcase-mu</h1>
     <p>Lengkapi data berikut, lalu lanjutkan ke pembayaran.</p>
   </div>
 </section>
@@ -20,7 +20,7 @@
         <div class="field"><label for="phone">Nomor HP / WhatsApp</label><input type="tel" id="phone" name="phone" required></div>
       </div>
       <div class="field">
-        <label>Jenis booth</label>
+        <label>Paket Showcase</label>
         <div class="booth-options">
           {% for booth in booth_types %}
           <label class="booth-option {% if booth.slots_remaining <= 0 %}disabled{% endif %}" data-booth-id="{{ booth.id }}">
@@ -65,7 +65,7 @@
     <aside class="info-card" id="alur">
       <h3>Alur pendaftaran</h3>
       <ol>
-        <li>Isi data dan pilih paket booth.</li>
+        <li>Isi data dan pilih paket Showcase.</li>
         <li>Lanjutkan ke jendela pembayaran.</li>
         <li>Bayar melalui transfer, kartu, QRIS, atau e-wallet.</li>
         <li>Status diperbarui otomatis setelah pembayaran diterima.</li>
@@ -78,9 +78,9 @@
       {% endif %}
       <div class="info-summary" id="reg-summary">
         <h4>Ringkasan pesanan</h4>
-        <p class="info-summary-empty" id="reg-summary-empty">Pilih jenis booth untuk melihat ringkasan biaya.</p>
+        <p class="info-summary-empty" id="reg-summary-empty">Pilih Paket Showcase untuk melihat ringkasan biaya.</p>
         <div id="reg-summary-body" hidden>
-          <div class="info-summary-row"><span>Booth</span><strong id="reg-summary-booth">-</strong></div>
+          <div class="info-summary-row"><span>Showcase</span><strong id="reg-summary-booth">-</strong></div>
           <div class="info-summary-row" id="reg-summary-addon-row" hidden><span>Opsi tambahan</span><strong id="reg-summary-addons">-</strong></div>
           <div class="info-summary-total"><span>Total</span><strong id="reg-summary-total">Rp 0</strong></div>
         </div>

@@ -1,0 +1,67 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Pendaftaran Peserta - Admin SATRIA 2026{% endblock %}
+{% block admin_content %}
+
+<div class="admin-panel-head admin-panel-head-row">
+  <div>
+    <h2>Daftar pendaftaran peserta</h2>
+    <p>Seluruh pendaftaran peserta beserta status pembayaran.</p>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>No. pendaftaran</th>
+        <th>Nama</th>
+        <th>Kontak</th>
+        <th>Paket</th>
+        <th>Total</th>
+        <th>Tanggal</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in participants %}
+      <tr>
+        <td class="mono">{{ p.order_id }}</td>
+        <td>{{ p.full_name }}</td>
+        <td>
+          <div class="contact-cell">
+            <span>{{ p.email }}</span>
+            <span>{{ p.phone }}</span>
+          </div>
+        </td>
+        <td>{{ p.participant_type.name if p.participant_type else "-" }}</td>
+        <td>Rp {{ "{:,}".format(p.total_amount).replace(",", ".") }}</td>
+        <td>{{ p.created_at.strftime("%d %b %Y %H:%M") }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_update_participant_status', participant_id=p.id) }}"
+                  class="status-form js-status-form"
+                  data-order="{{ p.order_id }}" data-current="{{ p.payment_status }}">
+            <input type="hidden" name="confirm_password">
+            <select name="payment_status" class="status-select status-{{ p.payment_status }}">
+              {% for s in ["pending", "paid", "expired", "cancelled", "failed", "refunded"] %}
+              <option value="{{ s }}" {% if p.payment_status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>
+            <form method="POST" action="{{ url_for('admin_delete_participant', participant_id=p.id) }}"
+                  class="js-delete-form"
+                  data-order="{{ p.order_id }}" data-inst="{{ p.full_name }}">
+              <button type="submit" class="btn-icon-danger">Hapus</button>
+            </form>
+          </td>
+</tr>
+      {% else %}
+      <tr><td colspan="8" class="empty-row">Belum ada pendaftaran peserta masuk.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

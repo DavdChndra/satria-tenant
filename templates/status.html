@@ -17,8 +17,8 @@
     <div class="status-details">
       <div><span>Institusi</span><strong>{{ tenant.institution_name }}</strong></div>
       <div><span>PIC</span><strong>{{ tenant.pic_name }}</strong></div>
-      <div><span>Jenis booth</span><strong>{{ tenant.booth_type.name }}</strong></div>
-      <div><span>Harga booth</span><strong>Rp {{ "{:,}".format(tenant.price_at_registration).replace(",", ".") }}</strong></div>
+      <div><span>Paket Showcase</span><strong>{{ tenant.booth_type.name }}</strong></div>
+      <div><span>Harga Showcase</span><strong>Rp {{ "{:,}".format(tenant.price_at_registration).replace(",", ".") }}</strong></div>
       {% for sel in tenant.selected_add_ons %}
       <div><span>{{ sel.add_on.name }}</span><strong>Rp {{ "{:,}".format(sel.price).replace(",", ".") }}</strong></div>
       {% endfor %}
@@ -34,20 +34,20 @@
 
     {% if tenant.payment_status == "paid" %}
     <p class="status-hint">
-      Pembayaran Anda sudah kami terima dan slot booth resmi terkunci.
+      Pembayaran Anda sudah kami terima dan slot Showcase resmi terkunci.
       Bukti pembayaran telah dikirim ke <strong>{{ tenant.email }}</strong>.
       Informasi teknis pelaksanaan akan menyusul menjelang acara.
     </p>
     {% elif tenant.payment_status == "pending" %}
     <p class="status-hint">
-      Kami menunggu pembayaran Anda. Slot booth belum terkunci sampai pembayaran diterima.
+      Kami menunggu pembayaran Anda. Slot Showcase belum terkunci sampai pembayaran diterima.
       Jika Anda sudah membayar, status di halaman ini akan berubah otomatis dalam beberapa menit.
       Muat ulang halaman untuk memeriksa.
     </p>
     {% elif tenant.payment_status in ("expired", "cancelled", "failed") %}
     <p class="status-hint status-hint-warn">
       Pembayaran untuk pendaftaran ini {% if tenant.payment_status == "expired" %}kedaluwarsa{% elif tenant.payment_status == "cancelled" %}dibatalkan{% else %}gagal diproses{% endif %}
-      dan <strong>slot booth belum terpesan</strong>. Silakan mendaftar ulang lewat form pendaftaran,
+      dan <strong>slot Showcase belum terpesan</strong>. Silakan mendaftar ulang lewat form pendaftaran,
       atau hubungi panitia bila Anda merasa sudah melakukan pembayaran.
     </p>
     {% elif tenant.payment_status == "refunded" %}

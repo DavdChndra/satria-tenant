@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Daftar sebagai peserta - SATRIA 2026{% endblock %}
+{% block content %}
+
+<section class="reg-page-head">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="{{ url_for('index') }}">Beranda</a> / Daftar peserta</div>
+    <h1>Daftar sebagai peserta</h1>
+    <p>Lengkapi data berikut, lalu lanjutkan ke pembayaran.</p>
+  </div>
+</section>
+
+<section class="reg-form-section" id="form-pendaftaran">
+  <div class="wrap form-grid">
+    <form id="registration-form-peserta" class="reg-form" autocomplete="off">
+      <div class="field"><label for="full_name">Nama lengkap</label><input type="text" id="full_name" name="full_name" required></div>
+      <div class="field-row">
+        <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
+        <div class="field"><label for="phone">Nomor HP / WhatsApp</label><input type="tel" id="phone" name="phone" required></div>
+      </div>
+      <div class="field">
+        <label>Paket peserta</label>
+        <div class="booth-options">
+          {% for ptype in participant_types %}
+          <label class="booth-option {% if ptype.slots_remaining <= 0 %}disabled{% endif %}" data-participant-type-id="{{ ptype.id }}">
+            <input type="radio" name="participant_type_id" value="{{ ptype.id }}" {% if ptype.slots_remaining <= 0 %}disabled{% endif %} required>
+            <div class="booth-option-body">
+              <div class="booth-option-head">
+                <span class="booth-name">{{ ptype.name }}</span>
+                <span class="booth-price" data-price="{{ ptype.price }}">Rp {{ "{:,}".format(ptype.price).replace(',', '.') }}</span>
+              </div>
+              <p class="booth-desc">{{ ptype.description }}</p>
+              <span class="booth-slots">{{ ptype.slots_remaining }} slot tersisa dari {{ ptype.quota }}</span>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="reg-total" id="reg-total" hidden>
+        <span>Total pembayaran</span>
+        <strong id="reg-total-value">Rp 0</strong>
+      </div>
+      <div id="form-error" class="form-error" style="display:none;"></div>
+      <button type="submit" id="submit-btn" class="btn-primary btn-block">Lanjutkan ke pembayaran</button>
+    </form>
+    <aside class="info-card" id="alur">
+      <h3>Alur pendaftaran</h3>
+      <ol>
+        <li>Isi data dan pilih paket peserta.</li>
+        <li>Lanjutkan ke jendela pembayaran.</li>
+        <li>Bayar melalui transfer, kartu, QRIS, atau e-wallet.</li>
+        <li>Status diperbarui otomatis setelah pembayaran diterima.</li>
+      </ol>
+      {% if event_info.notes_list %}
+      <div class="info-notes">
+        <h4>Catatan acara</h4>
+        <ul>{% for note in event_info.notes_list %}<li>{{ note }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      <div class="info-summary" id="reg-summary">
+        <h4>Ringkasan pesanan</h4>
+        <p class="info-summary-empty" id="reg-summary-empty">Pilih paket peserta untuk melihat ringkasan biaya.</p>
+        <div id="reg-summary-body" hidden>
+          <div class="info-summary-row"><span>Paket</span><strong id="reg-summary-booth">-</strong></div>
+          <div class="info-summary-total"><span>Total</span><strong id="reg-summary-total">Rp 0</strong></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+{% if config.get('MIDTRANS_IS_PRODUCTION') %}
+<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
+{% else %}
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/register_peserta.js') }}"></script>
+{% endblock %}

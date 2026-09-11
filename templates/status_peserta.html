@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="status-section">
+  <div class="wrap status-card">
+    <span class="status-pill status-{{ participant.payment_status }}">
+      {% if participant.payment_status == "paid" %}Pembayaran diterima
+      {% elif participant.payment_status == "pending" %}Menunggu pembayaran
+      {% elif participant.payment_status == "expired" %}Kedaluwarsa
+      {% elif participant.payment_status == "cancelled" %}Dibatalkan
+      {% elif participant.payment_status == "failed" %}Gagal
+      {% else %}{{ participant.payment_status }}
+      {% endif %}
+    </span>
+    <h1>Status pendaftaran</h1>
+    <p class="order-id">Nomor pendaftaran: <strong>{{ participant.order_id }}</strong></p>
+
+    <div class="status-details">
+      <div><span>Nama peserta</span><strong>{{ participant.full_name }}</strong></div>
+      <div><span>Paket peserta</span><strong>{{ participant.participant_type.name }}</strong></div>
+      <div class="status-details-total"><span>Total pembayaran</span><strong>Rp {{ "{:,}".format(participant.total_amount).replace(",", ".") }}</strong></div>
+    </div>
+
+    {% if participant.payment_status == "paid" %}
+    <p class="status-hint">
+      Pembayaran Anda sudah kami terima dan pendaftaran Anda resmi terkunci.
+      Bukti pembayaran telah dikirim ke <strong>{{ participant.email }}</strong>.
+      Informasi teknis pelaksanaan akan menyusul menjelang acara.
+    </p>
+    {% elif participant.payment_status == "pending" %}
+    <p class="status-hint">
+      Kami menunggu pembayaran Anda. Pendaftaran belum terkunci sampai pembayaran diterima.
+      Jika Anda sudah membayar, status di halaman ini akan berubah otomatis dalam beberapa menit.
+      Muat ulang halaman untuk memeriksa.
+    </p>
+    {% elif participant.payment_status in ("expired", "cancelled", "failed") %}
+    <p class="status-hint status-hint-warn">
+      Pembayaran untuk pendaftaran ini {% if participant.payment_status == "expired" %}kedaluwarsa{% elif participant.payment_status == "cancelled" %}dibatalkan{% else %}gagal diproses{% endif %}
+      dan <strong>pendaftaran belum terpesan</strong>. Silakan mendaftar ulang lewat form pendaftaran,
+      atau hubungi panitia bila Anda merasa sudah melakukan pembayaran.
+    </p>
+    {% elif participant.payment_status == "refunded" %}
+    <p class="status-hint">
+      Pembayaran untuk pendaftaran ini telah dikembalikan. Hubungi panitia bila ada pertanyaan.
+    </p>
+    {% endif %}
+
+    {% if participant.payment_status == "paid" %}
+    <a href="{{ url_for('ticket_preview_peserta', order_id=participant.order_id) }}" class="btn-primary btn-block">
+      Lihat kartu peserta
+    </a>
+    {% elif participant.payment_status == "pending" %}
+    <div id="pay-error" class="form-error" style="display:none;"></div>
+    <button type="button" id="pay-again" class="btn-primary btn-block">
+      Lanjutkan pembayaran
+    </button>
+    {% elif participant.payment_status in ("expired", "cancelled", "failed") %}
+    <a href="{{ url_for('registration_form_peserta') }}" class="btn-primary btn-block">Daftar ulang</a>
+    {% endif %}
+
+    <div class="status-link-box">
+      <span class="status-link-label">Simpan tautan ini untuk memeriksa status kapan saja</span>
+      <div class="status-link-row">
+        <input type="text" id="status-url" readonly value="{{ request.url }}">
+        <button type="button" id="copy-url" class="btn-outline btn-sm">Salin</button>
+      </div>
+    </div>
+
+    {% if participant.payment_status != "expired" %}
+    <a href="{{ url_for('index') }}" class="btn-outline btn-block">Kembali ke beranda</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if config.get('MIDTRANS_IS_PRODUCTION') %}
+<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
+{% else %}
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.get('MIDTRANS_CLIENT_KEY', '') }}"></script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/status_peserta.js') }}"></script>
+{% endblock %}

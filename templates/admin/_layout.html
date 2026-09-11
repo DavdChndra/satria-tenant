@@ -34,10 +34,12 @@
       <a href="{{ url_for('admin_summit') }}" class="admin-side-link {% if active_nav == 'summit' %}is-active{% endif %}">Konten summit</a>
       <a href="{{ url_for('admin_foto') }}" class="admin-side-link {% if active_nav == 'foto' %}is-active{% endif %}">Foto</a>
       <a href="{{ url_for('admin_pembicara') }}" class="admin-side-link {% if active_nav == 'pembicara' %}is-active{% endif %}">Pembicara</a>
-      <a href="{{ url_for('admin_booth') }}" class="admin-side-link {% if active_nav == 'booth' %}is-active{% endif %}">Booth</a>
+      <a href="{{ url_for('admin_booth') }}" class="admin-side-link {% if active_nav == 'booth' %}is-active{% endif %}">Showcase</a>
       <a href="{{ url_for('admin_tambahan') }}" class="admin-side-link {% if active_nav == 'tambahan' %}is-active{% endif %}">Tambahan</a>
+      <a href="{{ url_for('admin_peserta') }}" class="admin-side-link {% if active_nav == 'peserta' %}is-active{% endif %}">Peserta</a>
       <a href="{{ url_for('admin_email') }}" class="admin-side-link {% if active_nav == 'email' %}is-active{% endif %}">Kirim email</a>
-      <a href="{{ url_for('admin_pendaftaran') }}" class="admin-side-link {% if active_nav == 'pendaftaran' %}is-active{% endif %}">Pendaftaran</a>
+      <a href="{{ url_for('admin_pendaftaran') }}" class="admin-side-link {% if active_nav == 'pendaftaran' %}is-active{% endif %}">Pendaftaran Showcase</a>
+      <a href="{{ url_for('admin_pendaftaran_peserta') }}" class="admin-side-link {% if active_nav == 'pendaftaran_peserta' %}is-active{% endif %}">Pendaftaran Peserta</a>
       <a href="{{ url_for('admin_akun') }}" class="admin-side-link {% if active_nav == 'akun' %}is-active{% endif %}">Akun</a>
     </nav>
     <div class="admin-sidebar-foot">

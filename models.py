@@ -168,6 +168,124 @@ class Tenant(me.Document):
         }
 
 
+class ParticipantType(me.Document):
+    """Paket pendaftaran peserta (bukan exhibitor) - harga dan kuota diatur lewat panel admin."""
+    meta = {"collection": "participant_types"}
+
+    name = me.StringField(max_length=100, required=True)
+    description = me.StringField(default="")
+    price = me.IntField(required=True)  # dalam Rupiah, tanpa desimal
+    quota = me.IntField(required=True, default=0)
+    is_active = me.BooleanField(default=True)
+    sort_order = me.IntField(default=0)
+    created_at = me.DateTimeField(default=datetime.utcnow)
+
+    @property
+    def slots_taken(self):
+        """Jumlah peserta yang sudah terdaftar dan lunas."""
+        return Participant.objects(participant_type=self, payment_status="paid").count()
+
+    @property
+    def slots_remaining(self):
+        return max(self.quota - self.slots_taken, 0)
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "description": self.description,
+            "price": self.price,
+            "quota": self.quota,
+            "slots_taken": self.slots_taken,
+            "slots_remaining": self.slots_remaining,
+            "is_active": self.is_active,
+            "sort_order": self.sort_order,
+        }
+
+
+class Participant(me.Document):
+    """Pendaftar sebagai peserta acara (bukan exhibitor/booth)."""
+    meta = {
+        "collection": "participants",
+        "indexes": [
+            "midtrans_order_id",
+            {"fields": ["checkin_token"], "unique": True, "sparse": True},
+        ],
+    }
+
+    order_id = me.StringField(max_length=64, required=True, unique=True)
+
+    full_name = me.StringField(max_length=150, required=True)
+    email = me.StringField(max_length=150, required=True)
+    phone = me.StringField(max_length=30, required=True)
+
+    participant_type = me.ReferenceField(ParticipantType, required=True)
+    price_at_registration = me.IntField(required=True)  # snapshot harga saat daftar
+
+    payment_status = me.StringField(max_length=30, default="pending")
+    # pending | paid | expired | cancelled | failed | refunded
+    midtrans_transaction_id = me.StringField(max_length=100)
+    payment_type = me.StringField(max_length=50)  # bank_transfer, qris, gopay, dll
+    paid_at = me.DateTimeField()
+
+    # Token Snap disimpan agar pembayaran yang belum selesai bisa dibuka lagi
+    snap_token = me.StringField(max_length=120, default="")
+
+    # order_id yang sedang dipakai di Midtrans - lihat catatan pada Tenant.midtrans_order_id.
+    midtrans_order_id = me.StringField(max_length=64)
+
+    # Tiket masuk: token acak yang tidak bisa ditebak, dipakai sebagai isi QR.
+    checkin_token = me.StringField(max_length=64)
+    checked_in_at = me.DateTimeField()
+
+    created_at = me.DateTimeField(default=datetime.utcnow)
+    updated_at = me.DateTimeField(default=datetime.utcnow)
+
+    def save(self, *args, **kwargs):
+        self.updated_at = datetime.utcnow()
+        return super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_checkin_token():
+        """Token acak 32 karakter - tidak dapat ditebak dari nomor pendaftaran."""
+        return secrets.token_urlsafe(24)
+
+    def ensure_checkin_token(self):
+        """Buat token bila belum ada. Dipanggil saat pembayaran lunas."""
+        if not self.checkin_token:
+            self.checkin_token = Participant.generate_checkin_token()
+        return self.checkin_token
+
+    @property
+    def is_checked_in(self):
+        return self.checked_in_at is not None
+
+    @property
+    def total_amount(self):
+        """Total yang benar-benar ditagihkan: harga paket peserta, tanpa opsi tambahan."""
+        return self.price_at_registration
+
+    @staticmethod
+    def generate_order_id():
+        return f"SATRIA26P-{secrets.token_hex(5).upper()}"
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "order_id": self.order_id,
+            "full_name": self.full_name,
+            "email": self.email,
+            "phone": self.phone,
+            "participant_type": self.participant_type.name if self.participant_type else None,
+            "price_at_registration": self.price_at_registration,
+            "total_amount": self.total_amount,
+            "payment_status": self.payment_status,
+            "payment_type": self.payment_type,
+            "paid_at": self.paid_at.isoformat() if self.paid_at else None,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
 class AdminUser(me.Document):
     meta = {"collection": "admin_users"}
 

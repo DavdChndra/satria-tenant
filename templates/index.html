@@ -22,7 +22,8 @@
   <div class="wrap">
     <a class="active" href="#top">Beranda</a>
     <a href="#agenda">Agenda</a>
-    <a href="#booth">Paket Booth</a>
+    <a href="#booth">Paket Showcase</a>
+    <a href="#peserta">Pendaftaran Peserta</a>
     <a href="#alasan">FAQ</a>
     <a href="{{ url_for('registration_form') }}">Daftar</a>
   </div>
@@ -114,7 +115,7 @@
       <span class="eyebrow">Agenda</span>
       <h2>{{ event_info.event_date or "Agenda acara" }}</h2>
       <h3>Yang bisa kamu harapkan</h3>
-      <p>{{ event_info.hero_lead or "Sepanjang acara, pengunjung dapat menjelajahi booth exhibitor, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung." }}</p>
+      <p>{{ event_info.hero_lead or "Sepanjang acara, pengunjung dapat menjelajahi showcase exhibitor, mengikuti talkshow kewirausahaan, dan menikmati hiburan panggung." }}</p>
     </div>
     <div class="timeline">
       {% for item in agenda_items %}
@@ -130,7 +131,7 @@
 <section id="booth">
   <div class="wrap">
     <div class="section-head">
-      <span class="eyebrow">Paket booth</span>
+      <span class="eyebrow">Paket Showcase</span>
       <h2>Pilih ruang untuk karya terbaikmu</h2>
     </div>
     <div class="highlight-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
@@ -143,11 +144,36 @@
           <strong class="booth-price-big">Rp {{ "{:,}".format(booth.price).replace(',', '.') }}</strong>
           <p>{{ booth.description }}</p>
           <span class="booth-slots" style="margin:12px 0 auto;">{{ booth.slots_remaining }} slot tersisa dari {{ booth.quota }}</span>
-          <a class="btn-outline btn-block" href="{{ url_for('registration_form') }}?booth={{ booth.id }}" style="margin-top:16px;">Pilih booth</a>
+          <a class="btn-outline btn-block" href="{{ url_for('registration_form') }}?booth={{ booth.id }}" style="margin-top:16px;">Pilih Showcase</a>
         </div>
       </article>
       {% else %}
-      <p class="empty-note">Belum ada paket booth aktif.</p>
+      <p class="empty-note">Belum ada paket Showcase aktif.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="peserta">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Pendaftaran Peserta</span>
+      <h2>Ikuti SATRIA 2026 sebagai peserta</h2>
+      <p>Bukan exhibitor? Daftar sebagai peserta untuk mengikuti seluruh rangkaian acara.</p>
+    </div>
+    <div class="highlight-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+      {% for ptype in participant_types %}
+      <article class="highlight-card" style="display:flex;flex-direction:column;padding:0;">
+        <div class="highlight-body" style="flex:1;display:flex;flex-direction:column;">
+          <h3>{{ ptype.name }}</h3>
+          <strong class="booth-price-big">Rp {{ "{:,}".format(ptype.price).replace(',', '.') }}</strong>
+          <p>{{ ptype.description }}</p>
+          <span class="booth-slots" style="margin:12px 0 auto;">{{ ptype.slots_remaining }} slot tersisa dari {{ ptype.quota }}</span>
+          <a class="btn-outline btn-block" href="{{ url_for('registration_form_peserta') }}" style="margin-top:16px;">Daftar sebagai peserta</a>
+        </div>
+      </article>
+      {% else %}
+      <p class="empty-note">Belum ada paket peserta aktif.</p>
       {% endfor %}
     </div>
   </div>

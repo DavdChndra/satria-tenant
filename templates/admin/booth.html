@@ -1,17 +1,17 @@
 {% extends "admin/_layout.html" %}
-{% block title %}Booth - Admin SATRIA 2026{% endblock %}
+{% block title %}Showcase - Admin SATRIA 2026{% endblock %}
 {% block admin_content %}
 
 <div class="admin-panel-head">
-  <h2>Pengaturan jenis booth</h2>
-  <p>Ubah harga, kuota, atau nonaktifkan jenis booth. Perubahan langsung berlaku di halaman pendaftaran.</p>
+  <h2>Pengaturan Paket Showcase</h2>
+  <p>Ubah harga, kuota, atau nonaktifkan Paket Showcase. Perubahan langsung berlaku di halaman pendaftaran.</p>
 </div>
 
 <div class="booth-settings-grid">
   {% for booth in booth_types %}
   <form class="booth-settings-card" method="POST" action="{{ url_for('admin_update_booth', booth_id=booth.id) }}">
     <div class="field">
-      <label>Nama booth</label>
+      <label>Nama Showcase</label>
       <input type="text" name="name" value="{{ booth.name }}" required>
     </div>
     <div class="field">
@@ -40,10 +40,10 @@
   {% endfor %}
 
   <form class="booth-settings-card booth-new" method="POST" action="{{ url_for('admin_new_booth') }}">
-    <h3>Tambah jenis booth baru</h3>
+    <h3>Tambah Paket Showcase baru</h3>
     <div class="field">
-      <label>Nama booth</label>
-      <input type="text" name="name" placeholder="mis. Booth komunitas" required>
+      <label>Nama Showcase</label>
+      <input type="text" name="name" placeholder="mis. Showcase komunitas" required>
     </div>
     <div class="field">
       <label>Deskripsi</label>
@@ -59,7 +59,7 @@
         <input type="number" name="quota" min="0" required>
       </div>
     </div>
-    <button type="submit" class="btn-primary btn-sm">Tambah booth</button>
+    <button type="submit" class="btn-primary btn-sm">Tambah Showcase</button>
   </form>
 </div>
 

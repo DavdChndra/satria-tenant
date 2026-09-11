@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Kartu peserta - {{ tenant.order_id }}{% endblock %}
+{% block title %}Kartu peserta - {{ participant.order_id }}{% endblock %}
 {% block content %}
 <section class="ticket-section">
   <div class="wrap">
 
     <div class="ticket-head">
       <h1>Kartu peserta</h1>
-      <p>Tunjukkan kartu ini kepada panitia saat memasuki area pameran.</p>
+      <p>Tunjukkan kartu ini kepada panitia saat memasuki area acara.</p>
     </div>
 
     <div class="id-card" id="id-card">
@@ -20,26 +20,23 @@
 
       <div class="id-card-body">
         <div class="id-card-info">
-          <span class="id-label">Institusi / organisasi</span>
-          <h2>{{ tenant.institution_name }}</h2>
-
-          <span class="id-label">Penanggung jawab</span>
-          <p class="id-value">{{ tenant.pic_name }}</p>
+          <span class="id-label">Nama peserta</span>
+          <h2>{{ participant.full_name }}</h2>
 
           <div class="id-meta">
             <div>
-              <span class="id-label">Paket Showcase</span>
-              <p class="id-value">{{ tenant.booth_type.name if tenant.booth_type else "-" }}</p>
+              <span class="id-label">Paket peserta</span>
+              <p class="id-value">{{ participant.participant_type.name if participant.participant_type else "-" }}</p>
             </div>
             <div>
               <span class="id-label">No. pendaftaran</span>
-              <p class="id-value mono">{{ tenant.order_id }}</p>
+              <p class="id-value mono">{{ participant.order_id }}</p>
             </div>
           </div>
         </div>
 
         <div class="id-card-qr">
-          <img src="{{ url_for('ticket_qr', order_id=tenant.order_id) }}"
+          <img src="{{ url_for('ticket_qr_peserta', order_id=participant.order_id) }}"
                alt="Kode QR tiket masuk">
           <span class="id-qr-note">Pindai saat masuk</span>
         </div>
@@ -51,9 +48,9 @@
       </div>
     </div>
 
-    {% if tenant.is_checked_in %}
+    {% if participant.is_checked_in %}
     <p class="ticket-note ticket-note-in">
-      Kartu ini sudah dipindai pada {{ tenant.checked_in_at.strftime("%d %b %Y %H:%M") }}.
+      Kartu ini sudah dipindai pada {{ participant.checked_in_at.strftime("%d %b %Y %H:%M") }}.
     </p>
     {% else %}
     <p class="ticket-note">
@@ -64,7 +61,7 @@
 
     <div class="ticket-actions">
       <button type="button" class="btn-primary" onclick="window.print()">Cetak / simpan PDF</button>
-      <a href="{{ url_for('registration_status', order_id=tenant.order_id) }}" class="btn-outline">
+      <a href="{{ url_for('registration_status_peserta', order_id=participant.order_id) }}" class="btn-outline">
         Kembali ke status
       </a>
     </div>

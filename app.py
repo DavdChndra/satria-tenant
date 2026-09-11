@@ -16,11 +16,14 @@ from werkzeug.utils import secure_filename
 
 from models import (BoothType, Tenant, AdminUser, EventInfo,
                     GalleryPhoto, Broadcast, Speaker, AddOn, SelectedAddOn,
-                    HighlightItem, AgendaItem, ReasonItem, KeynoteSection)
+                    HighlightItem, AgendaItem, ReasonItem, KeynoteSection,
+                    ParticipantType, Participant)
 from midtrans_service import (create_transaction, verify_notification_signature,
                               map_transaction_status, get_transaction_status)
 from email_service import (send_registration_received, send_payment_success,
-                           send_broadcast, is_configured as email_is_configured)
+                           send_broadcast, is_configured as email_is_configured,
+                           send_participant_registration_received,
+                           send_participant_payment_success)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -166,10 +169,15 @@ def delete_photo_file(filename):
 def seed_defaults():
     """Isi data awal jika database masih kosong."""
     if BoothType.objects.count() == 0:
-        BoothType(name="Booth standar", description="Ruang pameran 2x2 meter, meja, dua kursi.",
+        BoothType(name="Showcase standar", description="Ruang pameran 2x2 meter, meja, dua kursi.",
                   price=250000, quota=20, sort_order=1).save()
-        BoothType(name="Booth premium", description="Ruang pameran 3x3 meter, signage, slot demo panggung utama.",
+        BoothType(name="Showcase premium", description="Ruang pameran 3x3 meter, signage, slot demo panggung utama.",
                   price=300000, quota=10, sort_order=2).save()
+    if ParticipantType.objects.count() == 0:
+        ParticipantType(name="Peserta Reguler", description="Akses seluruh area pameran, talkshow, dan hiburan panggung.",
+                        price=50000, quota=200, sort_order=1).save()
+        ParticipantType(name="Peserta VIP", description="Akses seluruh area, tempat duduk prioritas, dan merchandise.",
+                        price=100000, quota=50, sort_order=2).save()
     if EventInfo.objects.count() == 0:
         EventInfo(
             venue_name="Gedung Serbaguna Telkom University",
@@ -187,11 +195,11 @@ def seed_defaults():
               description="Termasuk makan malam bersama panitia dan peserta lain di hotel.",
               price=75000, sort_order=1).save()
         AddOn(name="Cetak poster",
-              description="Poster A1 dicetak panitia dan dipasang di area booth Anda.",
+              description="Poster A1 dicetak panitia dan dipasang di area Showcase Anda.",
               price=40000, sort_order=2).save()
     if HighlightItem.objects.count() == 0:
         HighlightItem(title="50+ Exhibitor",
-                      description="Booth UMKM, komunitas, dan startup kampus dalam satu area pameran.",
+                      description="Showcase UMKM, komunitas, dan startup kampus dalam satu area pameran.",
                       sort_order=1).save()
         HighlightItem(title="Panggung Talkshow",
                       description="Diskusi kewirausahaan bersama praktisi dan alumni.",
@@ -203,15 +211,15 @@ def seed_defaults():
                       description="Penampilan musik dan pertunjukan mahasiswa sepanjang acara.",
                       sort_order=4).save()
     if AgendaItem.objects.count() == 0:
-        AgendaItem(time_label="08.00", activity="Registrasi & pembukaan booth", sort_order=1).save()
+        AgendaItem(time_label="08.00", activity="Registrasi & pembukaan Showcase", sort_order=1).save()
         AgendaItem(time_label="09.30", activity="Sesi pembuka & sambutan panitia", sort_order=2).save()
         AgendaItem(time_label="11.00", activity="Talkshow kewirausahaan", sort_order=3).save()
         AgendaItem(time_label="12.30", activity="Istirahat & jejaring", sort_order=4).save()
         AgendaItem(time_label="13.30", activity="Sesi komunitas & hiburan panggung", sort_order=5).save()
-        AgendaItem(time_label="17.00", activity="Booth ditutup", sort_order=6).save()
+        AgendaItem(time_label="17.00", activity="Showcase ditutup", sort_order=6).save()
     if ReasonItem.objects.count() == 0:
         ReasonItem(title="Jangkau ratusan pengunjung",
-                  description="Booth kamu terlihat langsung oleh pengunjung kampus dan komunitas sekitar.",
+                  description="Showcase kamu terlihat langsung oleh pengunjung kampus dan komunitas sekitar.",
                   sort_order=1).save()
         ReasonItem(title="Bangun relasi baru",
                   description="Bertemu exhibitor lain, komunitas, dan calon pelanggan dalam satu tempat.",
@@ -223,7 +231,7 @@ def seed_defaults():
         KeynoteSection(
             title="Membangun masa depan kewirausahaan kampus",
             body="Sesi pembuka SATRIA 2026 mengangkat cerita nyata dari exhibitor-exhibitor yang "
-                 "tumbuh dari booth kecil di kampus menjadi bisnis yang berkelanjutan. Panitia "
+                 "tumbuh dari Showcase kecil di kampus menjadi bisnis yang berkelanjutan. Panitia "
                  "mengundang seluruh peserta untuk hadir sejak sesi pertama.",
         ).save()
 
@@ -233,6 +241,7 @@ def seed_defaults():
 @app.route("/")
 def index():
     booth_types = BoothType.objects(is_active=True).order_by("sort_order")
+    participant_types = ParticipantType.objects(is_active=True).order_by("sort_order")
     photos = GalleryPhoto.objects(is_active=True).order_by("sort_order", "id")
     speakers = Speaker.objects(is_active=True).order_by("sort_order", "id")
     add_ons = AddOn.objects(is_active=True).order_by("sort_order", "id")
@@ -241,6 +250,7 @@ def index():
     reason_items = ReasonItem.objects.order_by("sort_order", "id")
     return render_template("index.html",
                            booth_types=booth_types,
+                           participant_types=participant_types,
                            photos=photos,
                            speakers=speakers,
                            add_ons=add_ons,
@@ -288,9 +298,9 @@ def api_register():
 
     booth = get_or_none(BoothType, booth_type_id)
     if not booth or not booth.is_active:
-        return jsonify({"error": "Jenis booth tidak ditemukan atau tidak aktif."}), 400
+        return jsonify({"error": "Paket Showcase tidak ditemukan atau tidak aktif."}), 400
     if booth.slots_remaining <= 0:
-        return jsonify({"error": "Kuota booth ini sudah penuh."}), 400
+        return jsonify({"error": "Kuota Showcase ini sudah penuh."}), 400
 
     requested_addon_ids = data.get("add_on_ids") or []
     if not isinstance(requested_addon_ids, list):
@@ -357,6 +367,206 @@ def api_register():
         "snap_token": result.get("token"),
         "redirect_url": result.get("redirect_url"),
     })
+
+
+@app.route("/daftar-peserta")
+def registration_form_peserta():
+    """Halaman formulir pendaftaran peserta - terpisah dari pendaftaran exhibitor."""
+    participant_types = ParticipantType.objects(is_active=True).order_by("sort_order")
+    return render_template("register_peserta.html",
+                           participant_types=participant_types,
+                           event_info=EventInfo.get_or_create())
+
+
+@app.route("/api/register-peserta", methods=["POST"])
+def api_register_peserta():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Payload pendaftaran tidak valid."}), 400
+
+    required = ["full_name", "email", "phone", "participant_type_id"]
+    values = {f: data.get(f, "") for f in required}
+    missing = [f for f in required if not isinstance(values[f], str) or not values[f].strip()]
+    if missing:
+        return jsonify({"error": f"Field wajib belum diisi: {', '.join(missing)}"}), 400
+
+    full_name = values["full_name"].strip()
+    email = values["email"].strip()
+    phone = values["phone"].strip()
+    participant_type_id = values["participant_type_id"].strip()
+    if len(full_name) > 150 or len(email) > 150 or len(phone) > 30:
+        return jsonify({"error": "Data pendaftaran melebihi batas panjang yang diizinkan."}), 400
+    if not valid_email(email):
+        return jsonify({"error": "Format email tidak valid."}), 400
+
+    ptype = get_or_none(ParticipantType, participant_type_id)
+    if not ptype or not ptype.is_active:
+        return jsonify({"error": "Paket peserta tidak ditemukan atau tidak aktif."}), 400
+    if ptype.slots_remaining <= 0:
+        return jsonify({"error": "Kuota paket peserta ini sudah penuh."}), 400
+
+    order_id = Participant.generate_order_id()
+    participant = Participant(
+        order_id=order_id,
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        participant_type=ptype,
+        price_at_registration=ptype.price,
+        payment_status="pending",
+    )
+    participant.save()
+
+    item_details = [{"id": f"peserta-{ptype.id}", "price": ptype.price, "quantity": 1, "name": ptype.name[:50]}]
+
+    try:
+        result = create_transaction(
+            order_id=order_id,
+            gross_amount=participant.total_amount,
+            customer={
+                "first_name": participant.full_name,
+                "email": participant.email,
+                "phone": participant.phone,
+            },
+            item_name=f"Pendaftaran {ptype.name} - SATRIA 2026",
+            item_details=item_details,
+        )
+    except Exception as exc:
+        return jsonify({"error": f"Gagal membuat transaksi Midtrans: {exc}"}), 502
+
+    participant.snap_token = result.get("token", "")
+    participant.midtrans_order_id = order_id
+    participant.save()
+
+    send_participant_registration_received(
+        participant, url_for("registration_status_peserta", order_id=order_id, _external=True))
+
+    return jsonify({
+        "order_id": order_id,
+        "snap_token": result.get("token"),
+        "redirect_url": result.get("redirect_url"),
+    })
+
+
+def refresh_pending_participant_status(participant):
+    """Sama seperti refresh_pending_tenant_status, tapi untuk pendaftaran peserta."""
+    if participant.payment_status != "pending" or not participant.midtrans_order_id:
+        return
+    info = get_transaction_status(participant.midtrans_order_id)
+    if not info or not info.get("transaction_status"):
+        return
+    sync_participant_payment_status(
+        participant, info.get("transaction_status"), info.get("fraud_status"),
+        payment_type=info.get("payment_type"), transaction_id=info.get("transaction_id"),
+    )
+
+
+@app.route("/status-peserta/<order_id>")
+def registration_status_peserta(order_id):
+    participant = get_by_field_or_404(Participant, order_id=order_id)
+    refresh_pending_participant_status(participant)
+    return render_template("status_peserta.html", participant=participant)
+
+
+@app.route("/api/pay-peserta/<order_id>", methods=["POST"])
+def api_resume_payment_peserta(order_id):
+    """Buka kembali jendela pembayaran untuk pendaftaran peserta yang belum lunas."""
+    participant = get_by_field_or_404(Participant, order_id=order_id)
+    refresh_pending_participant_status(participant)
+
+    if participant.payment_status == "paid":
+        return jsonify({"error": "Pendaftaran ini sudah lunas."}), 400
+    if participant.payment_status != "pending":
+        return jsonify({"error": "Transaksi ini sudah tidak berlaku. Silakan muat ulang halaman."}), 400
+
+    if participant.snap_token:
+        return jsonify({"snap_token": participant.snap_token, "order_id": participant.order_id})
+
+    new_midtrans_id = Participant.generate_order_id()
+    item_details = [{"id": f"peserta-{participant.participant_type.id}", "price": participant.price_at_registration,
+                      "quantity": 1, "name": participant.participant_type.name[:50]}]
+    try:
+        result = create_transaction(
+            order_id=new_midtrans_id,
+            gross_amount=participant.total_amount,
+            customer={"first_name": participant.full_name,
+                      "email": participant.email,
+                      "phone": participant.phone},
+            item_name=f"Pendaftaran {participant.participant_type.name} - SATRIA 2026",
+            item_details=item_details,
+        )
+    except Exception as exc:
+        return jsonify({"error": f"Gagal membuat transaksi: {exc}"}), 502
+
+    participant.midtrans_order_id = new_midtrans_id
+    participant.snap_token = result.get("token", "")
+    participant.save()
+    return jsonify({"snap_token": participant.snap_token, "order_id": participant.order_id})
+
+
+@app.route("/api/payment-peserta/<order_id>/confirm", methods=["POST"])
+def api_confirm_payment_peserta(order_id):
+    """Segarkan status pembayaran peserta setelah Snap melaporkan pembayaran sukses."""
+    participant = get_by_field_or_404(Participant, order_id=order_id)
+    refresh_pending_participant_status(participant)
+    return jsonify({"paid": participant.payment_status == "paid"})
+
+
+@app.route("/tiket-peserta/<order_id>/qr.svg")
+def ticket_qr_peserta(order_id):
+    """Gambar QR tiket masuk peserta. Isinya token acak, bukan nomor pendaftaran."""
+    participant = get_by_field_or_404(Participant, order_id=order_id)
+    if participant.payment_status != "paid" or not participant.checkin_token:
+        abort(404)
+
+    import qrcode
+    from qrcode.image.svg import SvgPathImage
+
+    qr = qrcode.QRCode(version=None, box_size=10, border=2,
+                       error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(participant.checkin_token)
+    qr.make(fit=True)
+
+    buf = io.BytesIO()
+    qr.make_image(image_factory=SvgPathImage).save(buf)
+    return Response(buf.getvalue(), mimetype="image/svg+xml",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.route("/tiket-peserta/<order_id>")
+def ticket_preview_peserta(order_id):
+    """Pratinjau ID card peserta - hanya untuk pendaftaran yang sudah lunas."""
+    participant = get_by_field_or_404(Participant, order_id=order_id)
+    if participant.payment_status != "paid":
+        flash("Kartu peserta terbit setelah pembayaran lunas.", "error")
+        return redirect(url_for("registration_status_peserta", order_id=order_id))
+    participant.ensure_checkin_token()
+    participant.save()
+    return render_template("ticket_peserta.html", participant=participant,
+                           event_info=EventInfo.get_or_create())
+
+
+def sync_participant_payment_status(participant, transaction_status, fraud_status,
+                                    payment_type=None, transaction_id=None):
+    """Sama seperti sync_tenant_payment_status, tapi untuk pendaftaran peserta."""
+    new_status = map_transaction_status(transaction_status, fraud_status)
+    was_paid = participant.payment_status == "paid"
+    status_changed = new_status != participant.payment_status
+
+    participant.payment_status = new_status
+    if payment_type:
+        participant.payment_type = payment_type
+    if transaction_id:
+        participant.midtrans_transaction_id = transaction_id
+    if new_status == "paid" and not participant.paid_at:
+        participant.paid_at = datetime.utcnow()
+    if new_status == "paid":
+        participant.ensure_checkin_token()
+    elif new_status in ("expired", "cancelled", "failed") and status_changed:
+        participant.snap_token = ""
+    participant.save()
+
+    return new_status == "paid" and not was_paid
 
 
 def refresh_pending_tenant_status(tenant):
@@ -523,19 +733,30 @@ def midtrans_webhook():
     # yang pembayarannya pernah diulang, nomor itu ada di midtrans_order_id.
     tenant = (Tenant.objects(midtrans_order_id=order_id).first()
               or Tenant.objects(order_id=order_id).first())
-    if not tenant:
+    if tenant:
+        just_paid = sync_tenant_payment_status(
+            tenant, transaction_status, fraud_status,
+            payment_type=payment_type, transaction_id=payload.get("transaction_id"),
+        )
+        # Midtrans dapat mengirim notifikasi yang sama berulang kali;
+        # email lunas hanya dikirim pada perubahan status pertama ke "paid".
+        if just_paid:
+            send_payment_success(tenant, url_for("registration_status",
+                                                 order_id=tenant.order_id, _external=True))
+        return jsonify({"ok": True})
+
+    participant = (Participant.objects(midtrans_order_id=order_id).first()
+                   or Participant.objects(order_id=order_id).first())
+    if not participant:
         return jsonify({"error": "Order tidak ditemukan"}), 404
 
-    just_paid = sync_tenant_payment_status(
-        tenant, transaction_status, fraud_status,
+    just_paid = sync_participant_payment_status(
+        participant, transaction_status, fraud_status,
         payment_type=payment_type, transaction_id=payload.get("transaction_id"),
     )
-
-    # Midtrans dapat mengirim notifikasi yang sama berulang kali;
-    # email lunas hanya dikirim pada perubahan status pertama ke "paid".
     if just_paid:
-        send_payment_success(tenant, url_for("registration_status",
-                                             order_id=tenant.order_id, _external=True))
+        send_participant_payment_success(participant, url_for("registration_status_peserta",
+                                                                order_id=participant.order_id, _external=True))
 
     return jsonify({"ok": True})
 
@@ -645,7 +866,7 @@ def admin_pembicara():
 @app.route("/admin/booth")
 @admin_required
 def admin_booth():
-    """Halaman pengaturan jenis booth."""
+    """Halaman pengaturan Paket Showcase."""
     return render_template(
         "admin/booth.html",
         active_nav="booth",
@@ -692,6 +913,28 @@ def admin_pendaftaran():
     )
 
 
+@app.route("/admin/peserta")
+@admin_required
+def admin_peserta():
+    """Halaman pengaturan Paket Peserta."""
+    return render_template(
+        "admin/peserta.html",
+        active_nav="peserta",
+        participant_types=ParticipantType.objects.order_by("sort_order"),
+    )
+
+
+@app.route("/admin/pendaftaran-peserta")
+@admin_required
+def admin_pendaftaran_peserta():
+    """Halaman daftar pendaftaran peserta."""
+    return render_template(
+        "admin/pendaftaran_peserta.html",
+        active_nav="pendaftaran_peserta",
+        participants=Participant.objects.order_by("-created_at"),
+    )
+
+
 @app.route("/admin/akun")
 @admin_required
 def admin_akun():
@@ -708,8 +951,8 @@ def admin_export_tenants_csv():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "No. Pendaftaran", "Institusi", "PIC", "Email", "Telepon", "Booth",
-        "Karya / Produk", "Harga Booth", "Opsi Tambahan", "Total Pembayaran",
+        "No. Pendaftaran", "Institusi", "PIC", "Email", "Telepon", "Showcase",
+        "Karya / Produk", "Harga Showcase", "Opsi Tambahan", "Total Pembayaran",
         "Status Pembayaran", "Tipe Pembayaran",
         "Tanggal Daftar", "Tanggal Lunas", "Waktu Check-in",
     ])
@@ -774,8 +1017,31 @@ def admin_scan_verify():
 
     tenant = Tenant.objects(checkin_token=token).first()
     if not tenant:
-        return jsonify({"status": "invalid",
-                        "message": "Kode tidak dikenali. Kartu ini tidak sah."}), 404
+        participant = Participant.objects(checkin_token=token).first()
+        if not participant:
+            return jsonify({"status": "invalid",
+                            "message": "Kode tidak dikenali. Kartu ini tidak sah."}), 404
+
+        if participant.payment_status != "paid":
+            return jsonify({"status": "unpaid",
+                            "message": "Pendaftaran ini belum lunas.",
+                            "institution": participant.full_name}), 409
+
+        already = participant.is_checked_in
+        if not already:
+            participant.checked_in_at = datetime.utcnow()
+            participant.save()
+
+        return jsonify({
+            "status": "repeat" if already else "ok",
+            "message": ("Peserta ini sudah masuk sebelumnya."
+                        if already else "Validasi berhasil."),
+            "order_id": participant.order_id,
+            "institution": participant.full_name,
+            "pic": participant.full_name,
+            "booth": participant.participant_type.name if participant.participant_type else "-",
+            "checked_in_at": participant.checked_in_at.strftime("%d %b %Y %H:%M"),
+        })
 
     if tenant.payment_status != "paid":
         return jsonify({"status": "unpaid",
@@ -818,7 +1084,7 @@ def admin_update_booth(booth_id):
     price = nonnegative_int(request.form.get("price", booth.price))
     quota = nonnegative_int(request.form.get("quota", booth.quota))
     if not name:
-        flash("Nama jenis booth wajib diisi.", "error")
+        flash("Nama Paket Showcase wajib diisi.", "error")
         return redirect(url_for("admin_booth"))
     if price is None or quota is None:
         flash("Harga dan kuota harus berupa angka.", "error")
@@ -843,7 +1109,7 @@ def admin_new_booth():
         return redirect(url_for("admin_booth"))
     name = form_text("name")
     if not name:
-        flash("Nama jenis booth wajib diisi.", "error")
+        flash("Nama Paket Showcase wajib diisi.", "error")
         return redirect(url_for("admin_booth"))
     BoothType(
         name=name,
@@ -852,8 +1118,54 @@ def admin_new_booth():
         quota=quota,
         sort_order=next_sort_order(BoothType),
     ).save()
-    flash(f"Jenis booth '{name}' ditambahkan.", "success")
+    flash(f"Paket Showcase '{name}' ditambahkan.", "success")
     return redirect(url_for("admin_booth"))
+
+
+@app.route("/admin/peserta/<participant_type_id>/update", methods=["POST"])
+@admin_required
+def admin_update_participant_type(participant_type_id):
+    ptype = get_or_404(ParticipantType, participant_type_id)
+    name = form_text("name", ptype.name)
+    price = nonnegative_int(request.form.get("price", ptype.price))
+    quota = nonnegative_int(request.form.get("quota", ptype.quota))
+    if not name:
+        flash("Nama Paket Peserta wajib diisi.", "error")
+        return redirect(url_for("admin_peserta"))
+    if price is None or quota is None:
+        flash("Harga dan kuota harus berupa angka.", "error")
+        return redirect(url_for("admin_peserta"))
+    ptype.name = name
+    ptype.description = form_text("description", ptype.description)
+    ptype.price = price
+    ptype.quota = quota
+    ptype.is_active = request.form.get("is_active") == "on"
+    ptype.save()
+    flash(f"Pengaturan '{ptype.name}' berhasil disimpan.", "success")
+    return redirect(url_for("admin_peserta"))
+
+
+@app.route("/admin/peserta/new", methods=["POST"])
+@admin_required
+def admin_new_participant_type():
+    price = nonnegative_int(request.form.get("price"))
+    quota = nonnegative_int(request.form.get("quota"))
+    if price is None or quota is None:
+        flash("Harga dan kuota harus berupa angka.", "error")
+        return redirect(url_for("admin_peserta"))
+    name = form_text("name")
+    if not name:
+        flash("Nama Paket Peserta wajib diisi.", "error")
+        return redirect(url_for("admin_peserta"))
+    ParticipantType(
+        name=name,
+        description=form_text("description"),
+        price=price,
+        quota=quota,
+        sort_order=next_sort_order(ParticipantType),
+    ).save()
+    flash(f"Paket Peserta '{name}' ditambahkan.", "success")
+    return redirect(url_for("admin_peserta"))
 
 
 @app.route("/admin/addon/<addon_id>/update", methods=["POST"])
@@ -1387,6 +1699,50 @@ def admin_delete_tenant(tenant_id):
     tenant.delete()
     flash(f"Pendaftaran {order_id} telah dihapus.", "success")
     return redirect(url_for("admin_pendaftaran"))
+
+
+@app.route("/admin/participant/<participant_id>/status", methods=["POST"])
+@admin_required
+def admin_update_participant_status(participant_id):
+    """Override manual status pembayaran peserta, misalnya untuk pembayaran offline/khusus."""
+    participant = get_or_404(Participant, participant_id)
+    new_status = request.form.get("payment_status")
+    confirm_password = request.form.get("confirm_password", "")
+
+    admin = get_or_404(AdminUser, session["admin_id"])
+    if not check_password_hash(admin.password_hash, confirm_password):
+        flash("Password salah. Status pembayaran tidak diubah.", "error")
+        return redirect(url_for("admin_pendaftaran_peserta"))
+
+    if new_status not in ("pending", "paid", "expired", "cancelled", "failed", "refunded"):
+        flash("Status pembayaran tidak valid.", "error")
+        return redirect(url_for("admin_pendaftaran_peserta"))
+
+    was_paid = participant.payment_status == "paid"
+    participant.payment_status = new_status
+    if new_status == "paid" and not participant.paid_at:
+        participant.paid_at = datetime.utcnow()
+    if new_status == "paid":
+        participant.ensure_checkin_token()
+    participant.save()
+    flash(f"Status pendaftaran {participant.order_id} diperbarui menjadi '{new_status}'.", "success")
+
+    if new_status == "paid" and not was_paid:
+        if send_participant_payment_success(participant, url_for("registration_status_peserta",
+                                                                   order_id=participant.order_id, _external=True)):
+            flash(f"Email bukti lunas dikirim ke {participant.email}.", "success")
+    return redirect(url_for("admin_pendaftaran_peserta"))
+
+
+@app.route("/admin/participant/<participant_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_participant(participant_id):
+    """Hapus satu pendaftaran peserta secara permanen."""
+    participant = get_or_404(Participant, participant_id)
+    order_id = participant.order_id
+    participant.delete()
+    flash(f"Pendaftaran {order_id} telah dihapus.", "success")
+    return redirect(url_for("admin_pendaftaran_peserta"))
 
 
 @app.errorhandler(413)

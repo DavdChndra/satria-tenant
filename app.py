@@ -1269,6 +1269,26 @@ def admin_update_event():
         if field in request.form:
             setattr(info, field, request.form.get(field, "").strip())
 
+    upload = request.files.get("intro_image")
+    if upload and upload.filename:
+        filename = save_uploaded_photo(upload)
+        if filename:
+            delete_photo_file(info.intro_image)
+            info.intro_image = filename
+    elif request.form.get("remove_intro_image") == "1":
+        delete_photo_file(info.intro_image)
+        info.intro_image = ""
+
+    upload = request.files.get("highlights_bg")
+    if upload and upload.filename:
+        filename = save_uploaded_photo(upload)
+        if filename:
+            delete_photo_file(info.highlights_bg)
+            info.highlights_bg = filename
+    elif request.form.get("remove_highlights_bg") == "1":
+        delete_photo_file(info.highlights_bg)
+        info.highlights_bg = ""
+
     if "speakers_eyebrow" in request.form:
         info.speakers_eyebrow = request.form.get("speakers_eyebrow", "").strip()
     if "speakers_title" in request.form:
@@ -1309,6 +1329,7 @@ def admin_new_highlight():
     HighlightItem(
         title=title,
         description=description,
+        image=save_uploaded_photo(request.files.get("image")) or "",
         sort_order=next_sort_order(HighlightItem),
     ).save()
     flash(f"Sorotan '{title}' ditambahkan.", "success")
@@ -1328,6 +1349,17 @@ def admin_update_highlight(highlight_id):
     item.description = form_text("description")
     item.sort_order = nonnegative_int(request.form.get("sort_order"), item.sort_order)
     item.is_active = request.form.get("is_active") == "on"
+
+    upload = request.files.get("image")
+    if upload and upload.filename:
+        filename = save_uploaded_photo(upload)
+        if filename:
+            delete_photo_file(item.image)
+            item.image = filename
+    elif request.form.get("remove_image") == "1":
+        delete_photo_file(item.image)
+        item.image = ""
+
     item.save()
     flash(f"Sorotan '{item.title}' berhasil disimpan.", "success")
     return redirect(url_for("admin_summit"))
@@ -1338,6 +1370,7 @@ def admin_update_highlight(highlight_id):
 def admin_delete_highlight(highlight_id):
     """Hapus satu sorotan acara."""
     item = get_or_404(HighlightItem, highlight_id)
+    delete_photo_file(item.image)
     item.delete()
     flash("Sorotan dihapus.", "success")
     return redirect(url_for("admin_summit"))
@@ -1755,4 +1788,5 @@ seed_defaults()
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)

@@ -5,16 +5,32 @@
 <section class="hero" id="top">
   {% if event_info.hero_video_url %}
   <video class="hero-media" autoplay muted loop playsinline><source src="{{ event_info.hero_video_url }}"></video>
+  {% elif photos %}
+  <div class="hero-photo-bg" id="hero-photo-bg" data-count="{{ photos|length }}">
+    {% for p in photos %}
+    <img class="hero-photo-slide{% if loop.first %} active{% endif %}"
+         src="{{ url_for('static', filename='uploads/' ~ p.filename) }}" alt=""
+         style="object-position:{{ p.object_position }};" loading="{% if loop.first %}eager{% else %}lazy{% endif %}">
+    {% endfor %}
+  </div>
   {% endif %}
   <div class="hero-overlay"></div>
   <div class="wrap hero-inner">
     <div class="breadcrumb"><a href="#">Acara</a> / SATRIA 2026</div>
+    {% if event_info.hero_eyebrow %}<span class="eyebrow hero-eyebrow">{{ event_info.hero_eyebrow }}</span>{% endif %}
     <h1>{{ event_info.hero_title_before or "SATRIA" }} <span>{{ event_info.hero_title_accent or "2026" }}</span>{{ event_info.hero_title_after }}</h1>
     <p class="meta">{{ event_info.event_date or "12–13 Desember 2026" }}{% if event_info.venue_name %} &nbsp;|&nbsp; <b>{{ event_info.venue_name }}</b>{% endif %}</p>
+    {% if event_info.address %}
+    <p class="meta hero-address">{{ event_info.address }}{% if event_info.maps_url %} &nbsp;&middot;&nbsp; <a href="{{ event_info.maps_url }}" target="_blank" rel="noopener">Lihat peta</a>{% endif %}</p>
+    {% endif %}
+    {% if event_info.hero_lead %}<p class="hero-lead">{{ event_info.hero_lead }}</p>{% endif %}
     <div class="hero-actions">
       <a class="btn-primary" href="{{ url_for('registration_form') }}">Daftar sebagai exhibitor</a>
       <a class="btn-outline-light" href="#agenda">Lihat agenda</a>
     </div>
+    {% if event_info.hero_note %}
+    <p class="hero-note">{% if event_info.hero_note_prefix %}{{ event_info.hero_note_prefix }} {% endif %}<b>{{ event_info.hero_note }}</b></p>
+    {% endif %}
   </div>
 </section>
 
@@ -29,25 +45,21 @@
   </div>
 </nav>
 
-<section>
+<section class="intro-section{% if event_info.intro_image %} intro-with-bg{% endif %}"
+  {% if event_info.intro_image %}style="background-image:url('{{ url_for('static', filename='uploads/' ~ event_info.intro_image) }}');"{% endif %}>
+  {% if event_info.intro_image %}<div class="intro-overlay"></div>{% endif %}
   <div class="wrap intro">
-    <div>
+    <div class="intro-text">
       <span class="eyebrow">Tentang acara</span>
       <h2>{{ event_info.intro_title or "Hadiri SATRIA 2026" }}</h2>
-      <p>{{ event_info.intro_body or event_info.hero_lead or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
-    </div>
-    <div class="video-box">
-      {% if event_info.hero_video_url %}
-      <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"><source src="{{ event_info.hero_video_url }}"></video>
-      {% else %}
-      <div class="play-btn"></div>
-      {% endif %}
+      {% if event_info.subtitle %}<p class="intro-subtitle">{{ event_info.subtitle }}</p>{% endif %}
+      <p>{{ event_info.intro_body or "SATRIA adalah pameran tahunan Telkom University yang mempertemukan exhibitor, UMKM, dan komunitas mahasiswa dalam satu hari penuh eksplorasi produk, jejaring, dan kolaborasi." }}</p>
     </div>
   </div>
 </section>
 
 {% if speakers %}
-<section class="bg-cloud">
+<section class="speakers-dark">
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">{{ event_info.speakers_eyebrow or "Pembicara" }}</span>
@@ -75,7 +87,9 @@
 {% endif %}
 
 {% if highlight_items %}
-<section>
+<section class="highlights-section{% if event_info.highlights_bg %} highlights-with-bg{% endif %}"
+  {% if event_info.highlights_bg %}style="background-image:url('{{ url_for('static', filename='uploads/' ~ event_info.highlights_bg) }}');"{% endif %}>
+  {% if event_info.highlights_bg %}<div class="highlights-overlay"></div>{% endif %}
   <div class="wrap">
     <div class="section-head">
       <span class="eyebrow">Sorotan acara</span>
@@ -205,16 +219,16 @@
     <div class="cta-grid">
       <div class="cta-card">
         <h3>Daftar sebagai exhibitor</h3>
-        <a href="{{ url_for('registration_form') }}">Isi formulir pendaftaran →</a>
+        <a class="cta-link" href="{{ url_for('registration_form') }}">Isi formulir pendaftaran</a>
       </div>
       <div class="cta-card">
         <h3>Cek status pendaftaran</h3>
         <form id="status-lookup-form" class="status-lookup-form">
           <input type="text" id="status-lookup-input" placeholder="Nomor pendaftaran (SATRIA26-...)" required>
-          <button type="submit">Cek status →</button>
+          <button type="submit" class="cta-link">Cek status</button>
         </form>
       </div>
-      <div class="cta-card"><h3>Punya pertanyaan?</h3><a href="#alasan">Lihat alasan bergabung →</a></div>
+      <div class="cta-card"><h3>Punya pertanyaan?</h3><a class="cta-link" href="#alasan">Lihat alasan bergabung</a></div>
     </div>
   </div>
 </section>
@@ -222,4 +236,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/status-lookup.js') }}"></script>
+<script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
 {% endblock %}

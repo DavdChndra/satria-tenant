@@ -7,52 +7,140 @@
   <p>Kelola intro, video hero, keynote, sorotan acara, agenda, dan alasan hadir yang tampil di halaman depan.</p>
 </div>
 
-<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_event') }}">
+<form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_event') }}">
   <input type="hidden" name="section" value="summit">
   <h3>Intro</h3>
   <div class="field-row">
-    <div class="field"><label for="subtitle">Subjudul hero</label><input id="subtitle" name="subtitle" value="{{ event_info.subtitle or '' }}"></div>
-    <div class="field"><label for="hero_video_url">URL video hero</label><input id="hero_video_url" name="hero_video_url" value="{{ event_info.hero_video_url or '' }}"></div>
+    <div class="field"><label for="subtitle">Subjudul hero</label><input type="text" id="subtitle" name="subtitle" value="{{ event_info.subtitle or '' }}"></div>
+    <div class="field"><label for="hero_video_url">URL video hero</label><input type="text" id="hero_video_url" name="hero_video_url" value="{{ event_info.hero_video_url or '' }}"></div>
   </div>
-  <div class="field"><label for="intro_title">Judul intro</label><input id="intro_title" name="intro_title" value="{{ event_info.intro_title or '' }}"></div>
+  <div class="field"><label for="intro_title">Judul intro</label><input type="text" id="intro_title" name="intro_title" value="{{ event_info.intro_title or '' }}"></div>
   <div class="field"><label for="intro_body">Isi intro</label><textarea id="intro_body" name="intro_body" rows="4">{{ event_info.intro_body or '' }}</textarea></div>
+  <div class="field">
+    <label for="intro_image">Gambar intro</label>
+    {% if event_info.intro_image %}
+    <div class="photo-thumb" style="max-width:220px;margin-bottom:10px;">
+      <img src="{{ url_for('static', filename='uploads/' ~ event_info.intro_image) }}" alt="Gambar intro" style="width:100%;height:100%;object-fit:cover;">
+    </div>
+    <label class="checkbox-label"><input type="checkbox" name="remove_intro_image" value="1"> Hapus gambar ini</label>
+    {% endif %}
+    <input type="file" id="intro_image" name="intro_image" accept="image/*">
+    <span class="field-hint">Dipakai sebagai gambar latar section "Tentang acara". JPG, PNG, WEBP, atau GIF.</span>
+  </div>
   <button type="submit" class="btn-primary btn-sm">Simpan intro</button>
 </form>
 
 <form class="event-settings-form" method="POST" action="{{ url_for('admin_update_keynote') }}">
   <h3>Keynote</h3>
-  <div class="field"><label for="keynote-title">Judul</label><input id="keynote-title" name="title" value="{{ keynote_section.title or '' }}"></div>
+  <div class="field"><label for="keynote-title">Judul</label><input type="text" id="keynote-title" name="title" value="{{ keynote_section.title or '' }}"></div>
   <div class="field"><label for="keynote-body">Isi</label><textarea id="keynote-body" name="body" rows="4">{{ keynote_section.body or '' }}</textarea></div>
   <button type="submit" class="btn-primary btn-sm">Simpan keynote</button>
 </form>
 
 <div class="admin-content-list">
   <h3>Sorotan acara</h3>
+  <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_event') }}">
+    <input type="hidden" name="section" value="summit">
+    <div class="field">
+      <label for="highlights_bg">Gambar latar section</label>
+      {% if event_info.highlights_bg %}
+      <div class="photo-thumb" style="max-width:220px;margin-bottom:10px;">
+        <img src="{{ url_for('static', filename='uploads/' ~ event_info.highlights_bg) }}" alt="Gambar latar sorotan acara" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <label class="checkbox-label"><input type="checkbox" name="remove_highlights_bg" value="1"> Hapus gambar ini</label>
+      {% endif %}
+      <input type="file" id="highlights_bg" name="highlights_bg" accept="image/*">
+      <span class="field-hint">Dipakai sebagai gambar latar section "Sorotan acara" (bukan gambar kartu). JPG, PNG, WEBP, atau GIF.</span>
+    </div>
+    <button type="submit" class="btn-primary btn-sm">Simpan latar</button>
+  </form>
   {% for item in highlight_items %}
-  <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_highlight', highlight_id=item.id) }}">
-    <div class="field-row"><div class="field"><label>Judul</label><input name="title" value="{{ item.title }}"></div><div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div></div>
-    <div class="field"><label>Deskripsi</label><textarea name="description" rows="2">{{ item.description }}</textarea></div>
-    <label class="checkbox-label"><input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Tampilkan</label>
-    <button type="submit" class="btn-primary btn-sm">Simpan sorotan</button>
-  </form>
-  <form method="POST" action="{{ url_for('admin_delete_highlight', highlight_id=item.id) }}"
-        onsubmit="return confirm('Hapus sorotan ini?');">
-    <button type="submit" class="btn-danger btn-sm">Hapus</button>
-  </form>
+  <div class="admin-content-item">
+    <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_update_highlight', highlight_id=item.id) }}">
+      <div class="field-row">
+        <div class="field"><label>Judul</label><input type="text" name="title" value="{{ item.title }}"></div>
+        <div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div>
+      </div>
+      <div class="field"><label>Deskripsi</label><textarea name="description" rows="2">{{ item.description }}</textarea></div>
+      <div class="field">
+        <label>Gambar</label>
+        {% if item.image %}
+        <div class="photo-thumb" style="max-width:180px;margin-bottom:10px;">
+          <img src="{{ url_for('static', filename='uploads/' ~ item.image) }}" alt="{{ item.title }}" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+        <label class="checkbox-label"><input type="checkbox" name="remove_image" value="1"> Hapus gambar ini</label>
+        {% endif %}
+        <input type="file" name="image" accept="image/*">
+      </div>
+      <label class="checkbox-label"><input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Tampilkan</label>
+      <button type="submit" class="btn-primary btn-sm">Simpan sorotan</button>
+    </form>
+    <form class="admin-content-item-actions" method="POST" action="{{ url_for('admin_delete_highlight', highlight_id=item.id) }}"
+          onsubmit="return confirm('Hapus sorotan ini?');">
+      <button type="submit" class="btn-danger btn-sm">Hapus</button>
+    </form>
+  </div>
   {% endfor %}
-  <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_new_highlight') }}"><div class="field-row"><div class="field"><label>Judul baru</label><input name="title" required></div><div class="field"><label>Deskripsi baru</label><input name="description" required></div></div><button type="submit" class="btn-outline btn-sm">Tambah sorotan</button></form>
+  <form class="event-settings-form" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_new_highlight') }}">
+    <div class="field-row">
+      <div class="field"><label>Judul baru</label><input type="text" name="title" required></div>
+      <div class="field"><label>Deskripsi baru</label><input type="text" name="description" required></div>
+    </div>
+    <div class="field"><label>Gambar</label><input type="file" name="image" accept="image/*"></div>
+    <button type="submit" class="btn-outline btn-sm">Tambah sorotan</button>
+  </form>
 </div>
 
 <div class="admin-content-list">
   <h3>Agenda</h3>
-  {% for item in agenda_items %}<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_agenda', agenda_id=item.id) }}"><div class="field-row"><div class="field"><label>Waktu</label><input name="time_label" value="{{ item.time_label }}"></div><div class="field"><label>Aktivitas</label><input name="activity" value="{{ item.activity }}"></div><div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div></div><button type="submit" class="btn-primary btn-sm">Simpan agenda</button></form><form method="POST" action="{{ url_for('admin_delete_agenda', agenda_id=item.id) }}" onsubmit="return confirm('Hapus item agenda ini?');"><button type="submit" class="btn-danger btn-sm">Hapus</button></form>{% endfor %}
-  <form class="event-settings-form" method="POST" action="{{ url_for('admin_new_agenda') }}"><div class="field-row"><div class="field"><label>Waktu baru</label><input name="time_label" required></div><div class="field"><label>Aktivitas baru</label><input name="activity" required></div></div><button type="submit" class="btn-outline btn-sm">Tambah agenda</button></form>
+  {% for item in agenda_items %}
+  <div class="admin-content-item">
+    <form class="event-settings-form" method="POST" action="{{ url_for('admin_update_agenda', agenda_id=item.id) }}">
+      <div class="field-row">
+        <div class="field"><label>Waktu</label><input type="text" name="time_label" value="{{ item.time_label }}"></div>
+        <div class="field"><label>Aktivitas</label><input type="text" name="activity" value="{{ item.activity }}"></div>
+        <div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div>
+      </div>
+      <button type="submit" class="btn-primary btn-sm">Simpan agenda</button>
+    </form>
+    <form class="admin-content-item-actions" method="POST" action="{{ url_for('admin_delete_agenda', agenda_id=item.id) }}" onsubmit="return confirm('Hapus item agenda ini?');">
+      <button type="submit" class="btn-danger btn-sm">Hapus</button>
+    </form>
+  </div>
+  {% endfor %}
+  <form class="event-settings-form" method="POST" action="{{ url_for('admin_new_agenda') }}">
+    <div class="field-row">
+      <div class="field"><label>Waktu baru</label><input type="text" name="time_label" required></div>
+      <div class="field"><label>Aktivitas baru</label><input type="text" name="activity" required></div>
+    </div>
+    <button type="submit" class="btn-outline btn-sm">Tambah agenda</button>
+  </form>
 </div>
 
 <div class="admin-content-list">
   <h3>Alasan hadir</h3>
-  {% for item in reason_items %}<form class="event-settings-form" method="POST" action="{{ url_for('admin_update_reason', reason_id=item.id) }}"><div class="field-row"><div class="field"><label>Judul</label><input name="title" value="{{ item.title }}"></div><div class="field"><label>Deskripsi</label><input name="description" value="{{ item.description }}"></div><div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div></div><button type="submit" class="btn-primary btn-sm">Simpan alasan</button></form><form method="POST" action="{{ url_for('admin_delete_reason', reason_id=item.id) }}" onsubmit="return confirm('Hapus alasan ini?');"><button type="submit" class="btn-danger btn-sm">Hapus</button></form>{% endfor %}
-  <form class="event-settings-form" method="POST" action="{{ url_for('admin_new_reason') }}"><div class="field-row"><div class="field"><label>Judul baru</label><input name="title" required></div><div class="field"><label>Deskripsi baru</label><input name="description" required></div></div><button type="submit" class="btn-outline btn-sm">Tambah alasan</button></form>
+  {% for item in reason_items %}
+  <div class="admin-content-item">
+    <form class="event-settings-form" method="POST" action="{{ url_for('admin_update_reason', reason_id=item.id) }}">
+      <div class="field-row">
+        <div class="field"><label>Judul</label><input type="text" name="title" value="{{ item.title }}"></div>
+        <div class="field"><label>Deskripsi</label><input type="text" name="description" value="{{ item.description }}"></div>
+        <div class="field"><label>Urutan</label><input type="number" min="0" name="sort_order" value="{{ item.sort_order }}"></div>
+      </div>
+      <button type="submit" class="btn-primary btn-sm">Simpan alasan</button>
+    </form>
+    <form class="admin-content-item-actions" method="POST" action="{{ url_for('admin_delete_reason', reason_id=item.id) }}" onsubmit="return confirm('Hapus alasan ini?');">
+      <button type="submit" class="btn-danger btn-sm">Hapus</button>
+    </form>
+  </div>
+  {% endfor %}
+  <form class="event-settings-form" method="POST" action="{{ url_for('admin_new_reason') }}">
+    <div class="field-row">
+      <div class="field"><label>Judul baru</label><input type="text" name="title" required></div>
+      <div class="field"><label>Deskripsi baru</label><input type="text" name="description" required></div>
+    </div>
+    <button type="submit" class="btn-outline btn-sm">Tambah alasan</button>
+  </form>
 </div>
 
 {% endblock %}
